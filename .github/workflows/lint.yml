@@ -1,0 +1,40 @@
+name: lint
+
+on:
+  push:
+    branches:
+      - 'main'
+      - 'dev**'
+
+env:
+  BUILD_TYPE: RELEASE
+  CXX: clang++
+  CC: clang
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      - name: Setup Dependencies
+        run: |
+          sudo apt-get update -y -qq
+          sudo apt-get install build-essential clang-tidy ninja-build
+
+      - name: Configure
+        run: |
+          cmake \
+            -B ${{github.workspace}}/build \
+            -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} \
+            -DVSP_TESTS=ON \
+            -DVSP_CLI=ON \
+            -DVSP_LINTER=clang-tidy
+
+      - name: Build
+        run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} -j $(nproc)

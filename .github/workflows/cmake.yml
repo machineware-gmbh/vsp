@@ -1,0 +1,43 @@
+name: cmake
+
+on:
+  push:
+    branches:
+      - 'main'
+      - 'dev**'
+
+jobs:
+  cmake:
+    name: cmake
+    runs-on: ubuntu-22.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        BUILD_TYPE: [Release, Debug]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      - name: Setup Dependencies
+        run: |
+          sudo apt-get update -y -qq
+          sudo apt-get install build-essential ninja-build
+
+      - name: Configure
+        run: |
+          cmake \
+            -B ${{github.workspace}}/build \
+            -DCMAKE_BUILD_TYPE=${{matrix.BUILD_TYPE}} \
+            -DVSP_TESTS=ON \
+            -DVSP_CLI=ON
+
+      - name: Build
+        run: cmake --build ${{github.workspace}}/build --config ${{matrix.BUILD_TYPE}} -j $(nproc)
+
+      - name: Test
+        working-directory: ${{github.workspace}}/build
+        run: ctest -C ${{matrix.BUILD_TYPE}} --output-on-failure

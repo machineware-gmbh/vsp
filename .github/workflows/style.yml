@@ -1,0 +1,21 @@
+name: style
+
+on:
+  push:
+    branches:
+      - 'main'
+      - 'dev**'
+
+jobs:
+  style:
+    name: style
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        submodules: 'recursive'
+
+    - name: Check Format
+      run: ./utils/format -n

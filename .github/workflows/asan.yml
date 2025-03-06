@@ -1,0 +1,49 @@
+name: asan
+
+on:
+  push:
+    branches:
+      - 'main'
+      - 'dev**'
+
+env:
+  TARGET_ARCH: linux64
+  ASAN_OPTIONS: verbosity=1
+  TSAN_OPTIONS: verbosity=1
+  UBSAN_OPTIONS: print_stacktrace=1
+
+jobs:
+  sanitize:
+    name: ${{matrix.sanitizer}}
+    runs-on: ubuntu-22.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        sanitizer: [ASAN, TSAN, UBSAN]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      - name: Setup Dependencies
+        run: |
+          sudo apt-get update -y -qq
+          sudo apt-get install build-essential ninja-build
+
+      - name: Configure
+        run: |
+          cmake \
+            -B ${{github.workspace}}/build \
+            -DCMAKE_BUILD_TYPE=${{matrix.sanitizer}} \
+            -DVSP_TESTS=ON \
+            -DVSP_CLI=ON
+
+      - name: Build
+        run: cmake --build ${{github.workspace}}/build --config ${{matrix.sanitizer}} -j $(nproc)
+
+      - name: Test
+        working-directory: ${{github.workspace}}/build
+        run: ctest -C ${{matrix.BUILD_TYPE}} --output-on-failure

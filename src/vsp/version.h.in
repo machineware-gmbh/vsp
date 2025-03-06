@@ -1,0 +1,26 @@
+/******************************************************************************
+ *                                                                            *
+ * Copyright (C) 2025 MachineWare GmbH                                        *
+ * All Rights Reserved                                                        *
+ *                                                                            *
+ * This is work is licensed under the terms described in the LICENSE file     *
+ * found in the root directory of this source tree.                           *
+ *                                                                            *
+ ******************************************************************************/
+
+#ifndef VSP_VERSION_H
+#define VSP_VERSION_H
+
+#define VSP_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
+#define VSP_VERSION_MINOR @PROJECT_VERSION_MINOR@
+#define VSP_VERSION_PATCH @PROJECT_VERSION_PATCH@
+
+#define VSP_GIT_REV       "@VSP_GIT_REV@"
+#define VSP_GIT_REV_SHORT "@VSP_GIT_REV_SHORT@"
+
+#define VSP_VERSION        @VSP_VERSION_INT@
+#define VSP_VERSION_STRING "@VSP_VERSION_STRING@"
+
+#include <mwr.h>
+
+#endif
