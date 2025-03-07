@@ -14,5 +14,5 @@ if (CMAKE_VERSION GREATER_EQUAL "3.19")
     set_target_properties(pugixml PROPERTIES VERSION "1.15")
 endif()
 
-target_include_directories(pugixml SYSTEM INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_include_directories(pugixml SYSTEM INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 install(FILES LICENSE.md DESTINATION . RENAME LICENSE-pugixml.md)

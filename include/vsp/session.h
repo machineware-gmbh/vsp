@@ -13,7 +13,7 @@
 
 #include "vsp/cmn.h"
 #include "vsp/attribute.h"
-#include "vsp/cmd.h"
+#include "vsp/command.h"
 #include "vsp/connection.h"
 #include "vsp/module.h"
 #include "vsp/target.h"
@@ -70,7 +70,7 @@ public:
     void dump();
     module* find_module(const string& name = "");
     attribute* find_attribute(const string& name);
-    cmd* find_command(const string& name);
+    command* find_command(const string& name);
     target* find_target(const string& name);
 
     const list<target>& targets() const;

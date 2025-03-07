@@ -19,7 +19,7 @@ include(Sanitizer)
 find_package(Git REQUIRED)
 find_github_repo(mwr "machineware-gmbh/mwr")
 
-add_subdirectory(deps/pugixml)
+add_subdirectory(src/pugixml)
 
 option(VSP_TESTS "Build unit tests" OFF)
 option(VSP_COVERAGE "Generate coverage data" OFF)
@@ -35,7 +35,7 @@ configure_file(${src}/vsp/version.h.in
 
 add_library(vsp STATIC
     ${src}/vsp/attribute.cpp
-    ${src}/vsp/cmd.cpp
+    ${src}/vsp/command.cpp
     ${src}/vsp/connection.cpp
     ${src}/vsp/cpureg.cpp
     ${src}/vsp/element.cpp
@@ -71,27 +71,7 @@ endif()
 
 if(VSP_CLI)
     message(STATUS "Building CLI")
-
-    add_executable(vsp-cli
-        ${src}/vsp-cli/cli.cpp
-        ${src}/vsp-cli/main.cpp
-        ${src}/vsp-cli/session_cli.cpp
-        ${src}/vsp-cli/startup_cli.cpp)
-
-    target_compile_options(vsp-cli PRIVATE ${MWR_COMPILER_WARN_FLAGS})
-    target_compile_features(vsp-cli PUBLIC cxx_std_17)
-
-    target_include_directories(vsp-cli PRIVATE ${src})
-    target_include_directories(vsp-cli PRIVATE ${gen})
-
-    set_target_properties(vsp-cli PROPERTIES DEBUG_POSTFIX "d")
-    set_target_properties(vsp-cli PROPERTIES CXX_CLANG_TIDY "${VSP_LINTER}")
-    set_target_properties(vsp-cli PROPERTIES VERSION "${VSP_VERSION}")
-    set_target_properties(vsp-cli PROPERTIES SOVERSION "${VSP_VERSION_MAJOR}")
-
-    target_link_libraries(vsp-cli PUBLIC vsp)
-
-    install(TARGETS vsp-cli DESTINATION bin)
+    add_subdirectory(src/cli)
 endif()
 
 install(TARGETS vsp DESTINATION lib)

@@ -8,12 +8,12 @@
  *                                                                            *
  ******************************************************************************/
 
-#ifndef VSP_CLI_CLI_H
-#define VSP_CLI_CLI_H
+#ifndef CLI_CLI_H
+#define CLI_CLI_H
 
-#include "vsp/cmn.h"
+#include "cli/cmn.h"
 
-namespace vsp {
+namespace cli {
 
 class cli
 {
@@ -53,6 +53,6 @@ void cli::register_handler(bool (T::*h)(const string&), const string& cmd,
         m_alias[alias] = cmd;
 }
 
-} // namespace vsp
+} // namespace cli
 
 #endif

@@ -11,7 +11,7 @@
 #include "vsp/module.h"
 
 #include "vsp/attribute.h"
-#include "vsp/cmd.h"
+#include "vsp/command.h"
 
 namespace vsp {
 
@@ -78,13 +78,13 @@ attribute* module::find_attribute(const string& name) {
     return module->find_attribute(name.substr(dot_pos + 1));
 }
 
-cmd* module::find_command(const string& name) {
+command* module::find_command(const string& name) {
     size_t dot_pos = name.find_last_of('.');
 
     if (dot_pos == string::npos) {
         auto it = find_if(
             m_cmds.begin(), m_cmds.end(),
-            [&name](const class cmd* c) -> bool { return c->name() == name; });
+            [&name](const command* c) -> bool { return c->name() == name; });
         if (it == m_cmds.end())
             return nullptr;
         return *it;
@@ -109,7 +109,7 @@ const list<attribute*>& module::get_attritbutes() {
     return m_attrs;
 }
 
-const list<cmd*>& module::get_cmds() {
+const list<command*>& module::get_commands() {
     return m_cmds;
 }
 
@@ -126,12 +126,12 @@ void module::add_attribute(const string& name, const string& type,
     add_attribute(new attribute(name, m_conn, this, type, count));
 }
 
-void module::add_cmd(cmd* c) {
+void module::add_command(command* c) {
     m_cmds.push_back(c);
 }
 
-void module::add_cmd(const string& name, size_t argc, const string& desc) {
-    add_cmd(new cmd(name, m_conn, this, argc, desc));
+void module::add_command(const string& name, size_t argc, const string& desc) {
+    add_command(new command(name, m_conn, this, argc, desc));
 }
 
 ostream& operator<<(ostream& os, const module& mod) {

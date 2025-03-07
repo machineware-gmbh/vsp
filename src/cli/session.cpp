@@ -8,47 +8,45 @@
  *                                                                            *
  ******************************************************************************/
 
-#include "vsp-cli/session_cli.h"
+#include "cli/session.h"
 
 #include "vsp/version.h"
 
-namespace vsp {
+namespace cli {
 
 using mwr::termcolors;
 
-session_cli::session_cli(shared_ptr<session> s):
+session::session(shared_ptr<vsp::session> s):
     m_session(std::move(s)), m_current_mod(nullptr) {
     if (!m_session->is_connected())
         m_session->connect();
     m_current_mod = m_session->find_module("");
 
-    register_handler(&session_cli::handle_cd, "cd",
+    register_handler(&session::handle_cd, "cd",
                      "moves current module to <module>");
-    register_handler(&session_cli::handle_exec, "exec",
+    register_handler(&session::handle_exec, "exec",
                      "executes the given <command> [args...]", "x");
-    register_handler(&session_cli::handle_info, "info",
+    register_handler(&session::handle_info, "info",
                      "print information about the current session", "i");
-    register_handler(&session_cli::handle_kill, "kill",
+    register_handler(&session::handle_kill, "kill",
                      "terminate current session", "k");
     register_handler(
-        &session_cli::handle_list, "list",
+        &session::handle_list, "list",
         "displays the module hierarchy onwards from current module", "ls");
-    register_handler(&session_cli::handle_quit, "quit",
-                     "disconnect from session", "q");
-    register_handler(&session_cli::handle_detach, "detach",
-                     "deatch from session", "d");
-    register_handler(&session_cli::handle_read, "read",
+    register_handler(&session::handle_quit, "quit", "disconnect from session",
+                     "q");
+    register_handler(&session::handle_detach, "detach", "deatch from session",
+                     "d");
+    register_handler(&session::handle_read, "read",
                      "reads the given <attribute>", "r");
-    register_handler(&session_cli::handle_run, "run", "continues simulation",
-                     "c");
-    register_handler(&session_cli::handle_stop, "stop",
-                     "stops the simulation");
-    register_handler(&session_cli::handle_step, "step",
+    register_handler(&session::handle_run, "run", "continues simulation", "c");
+    register_handler(&session::handle_stop, "stop", "stops the simulation");
+    register_handler(&session::handle_step, "step",
                      "advances simulation to the next discrete timestamp",
                      "s");
 }
 
-bool session_cli::handle_list(const string& args) {
+bool session::handle_list(const string& args) {
     bool show_mods = args.find("-m") != string::npos;
     bool show_attr = args.find("-a") != string::npos;
     bool show_cmd = args.find("-c") != string::npos;
@@ -74,8 +72,8 @@ bool session_cli::handle_list(const string& args) {
     }
 
     if (show_cmd) {
-        cmd* cinfo = m_current_mod->find_command("cinfo");
-        for (auto& c : m_current_mod->get_cmds()) {
+        vsp::command* cinfo = m_current_mod->find_command("cinfo");
+        for (auto& c : m_current_mod->get_commands()) {
             cout << termcolors::BOLD << termcolors::MAGENTA << c->name()
                  << termcolors::CLEAR;
 
@@ -87,7 +85,7 @@ bool session_cli::handle_list(const string& args) {
     return true;
 }
 
-bool session_cli::handle_cd(const string& args) {
+bool session::handle_cd(const string& args) {
     if (args == "..") {
         if (!m_current_mod->parent()) {
             cout << "current module has no parent" << endl;
@@ -102,7 +100,7 @@ bool session_cli::handle_cd(const string& args) {
         return true;
     }
 
-    module* m = m_current_mod->find_module(args);
+    vsp::module* m = m_current_mod->find_module(args);
     if (!m) {
         cout << "module '" << args << "' does not exist!" << endl;
         return true;
@@ -112,8 +110,8 @@ bool session_cli::handle_cd(const string& args) {
     return true;
 }
 
-bool session_cli::handle_read(const string& args) {
-    attribute* a = m_current_mod->find_attribute(args);
+bool session::handle_read(const string& args) {
+    vsp::attribute* a = m_current_mod->find_attribute(args);
     if (!a) {
         cout << "attribute '" << args << "' does not exist!" << endl;
         return true;
@@ -124,18 +122,18 @@ bool session_cli::handle_read(const string& args) {
     return true;
 }
 
-bool session_cli::handle_step(const string& args) {
+bool session::handle_step(const string& args) {
     m_session->step();
     return true;
 }
 
-void session_cli::print_report_line(const string& kind, const string& value) {
+void session::print_report_line(const string& kind, const string& value) {
     cout << termcolors::BOLD << termcolors::WHITE << std::left << std::setw(16)
          << kind << termcolors::CLEAR << std::left << termcolors::WHITE
          << value << termcolors::CLEAR << endl;
 }
 
-bool session_cli::handle_info(const string& args) {
+bool session::handle_info(const string& args) {
     print_report_line("Simulation Host", m_session->peer());
     print_report_line("VCML Version", m_session->vcml_version());
     print_report_line("SystemC Version", m_session->sysc_version());
@@ -146,7 +144,7 @@ bool session_cli::handle_info(const string& args) {
     return true;
 }
 
-bool session_cli::handle_run(const string& args) {
+bool session::handle_run(const string& args) {
     if (m_session->running()) {
         cout << "already running" << endl;
         return true;
@@ -156,7 +154,7 @@ bool session_cli::handle_run(const string& args) {
     return true;
 }
 
-bool session_cli::handle_stop(const string& args) {
+bool session::handle_stop(const string& args) {
     if (!m_session->running()) {
         cout << "not running" << endl;
         return true;
@@ -169,16 +167,16 @@ bool session_cli::handle_stop(const string& args) {
     return true;
 }
 
-bool session_cli::handle_quit(const string& args) {
+bool session::handle_quit(const string& args) {
     m_session->disconnect();
     return false;
 }
 
-bool session_cli::handle_detach(const string& args) {
+bool session::handle_detach(const string& args) {
     return false;
 }
 
-bool session_cli::handle_kill(const string& args) {
+bool session::handle_kill(const string& args) {
     try {
         m_session->kill();
     } catch (const mwr::report& e) {
@@ -187,10 +185,10 @@ bool session_cli::handle_kill(const string& args) {
     return false;
 }
 
-bool session_cli::handle_exec(const string& args) {
+bool session::handle_exec(const string& args) {
     vector<string> split = mwr::split(args, ' ');
 
-    cmd* c = m_current_mod->find_command(split[0]);
+    vsp::command* c = m_current_mod->find_command(split[0]);
     if (!c) {
         cout << "command " << split[0] << " not found" << endl;
         return true;
@@ -202,7 +200,7 @@ bool session_cli::handle_exec(const string& args) {
     return true;
 }
 
-string session_cli::prompt() const {
+string session::prompt() const {
     stringstream ss;
     ss << termcolors::BOLD << termcolors::WHITE << "[" << std::fixed
        << std::setprecision(9) << m_session->time() / 1e9 << "s] "
@@ -214,8 +212,8 @@ string session_cli::prompt() const {
     return ss.str();
 }
 
-bool session_cli::before_run() {
+bool session::before_run() {
     return m_session->is_connected();
 }
 
-} // namespace vsp
+} // namespace cli

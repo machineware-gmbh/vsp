@@ -8,20 +8,21 @@
  *                                                                            *
  ******************************************************************************/
 
-#ifndef VSP_CLI_SESSION_CLI_H
-#define VSP_CLI_SESSION_CLI_H
+#ifndef CLI_SESSION_H
+#define CLI_SESSION_H
 
-#include "vsp-cli/cli.h"
+#include "cli/cli.h"
 
+#include "cli/cmn.h"
 #include <vsp.h>
 
-namespace vsp {
+namespace cli {
 
-class session_cli : public cli
+class session : public cli
 {
 private:
-    shared_ptr<session> m_session;
-    module* m_current_mod;
+    shared_ptr<vsp::session> m_session;
+    vsp::module* m_current_mod;
     string m_last_cmd;
 
     bool handle_list(const string& args);
@@ -44,14 +45,14 @@ protected:
     bool before_run() override;
 
 public:
-    explicit session_cli(shared_ptr<session> s);
-    virtual ~session_cli() = default;
+    explicit session(shared_ptr<vsp::session> s);
+    virtual ~session() = default;
 
-    session_cli() = delete;
-    session_cli(const session_cli&) = delete;
-    session_cli& operator=(const session_cli&) = delete;
+    session() = delete;
+    session(const session&) = delete;
+    session& operator=(const session&) = delete;
 };
 
-} // namespace vsp
+} // namespace cli
 
 #endif

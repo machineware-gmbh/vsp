@@ -8,28 +8,28 @@
  *                                                                            *
  ******************************************************************************/
 
-#ifndef VSP_CMD_H
-#define VSP_CMD_H
+#ifndef VSP_COMMAND_H
+#define VSP_COMMAND_H
 
 #include "vsp/cmn.h"
 #include "vsp/element.h"
 
 namespace vsp {
 
-class cmd : public element
+class command : public element
 {
 private:
     size_t m_argc;
     string m_desc;
 
 public:
-    explicit cmd(const string& name, connection& conn, module* parent,
-                 size_t argc, const string& desc);
-    virtual ~cmd() = default;
+    explicit command(const string& name, connection& conn, module* parent,
+                     size_t argc, const string& desc);
+    virtual ~command() = default;
 
-    cmd() = delete;
-    cmd(const cmd&) = delete;
-    cmd& operator=(const cmd&) = delete;
+    command() = delete;
+    command(const command&) = delete;
+    command& operator=(const command&) = delete;
 
     string execute(const vector<string>& args);
     string execute(const string& args);

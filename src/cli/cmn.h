@@ -8,36 +8,40 @@
  *                                                                            *
  ******************************************************************************/
 
-#ifndef VSP_CLI_STARTUP_CLI_H
-#define VSP_CLI_STARTUP_CLI_H
+#ifndef CLI_CMN_H
+#define CLI_CMN_H
 
-#include "vsp-cli/cli.h"
+#include <functional>
+#include <iostream>
+#include <memory>
+#include <sstream>
+#include <string>
+#include <unordered_map>
 
-#include <vsp.h>
+namespace cli {
 
-namespace vsp {
+using std::string;
+using std::to_string;
+using std::stringstream;
 
-class startup_cli : public cli
-{
-private:
-    shared_ptr<session> m_session;
-    vector<shared_ptr<session>> m_sessions;
+using std::stoi;
+using std::stoull;
 
-    bool handle_exit(const string& args);
-    bool handle_list(const string& args);
-    bool handle_select(const string& args);
-    bool handle_connect(const string& args);
+using std::shared_ptr;
+using std::unique_ptr;
+using std::make_shared;
+using std::make_unique;
 
-    void session_cli();
+using std::function;
+using std::pair;
 
-public:
-    startup_cli();
-    virtual ~startup_cli() = default;
+using std::unordered_map;
+using std::vector;
 
-    startup_cli(const startup_cli&) = delete;
-    startup_cli& operator=(const startup_cli&) = delete;
-};
+using std::cout;
+using std::cin;
+using std::endl;
 
-} // namespace vsp
+} // namespace cli
 
 #endif

@@ -91,9 +91,9 @@ module* xml_parse_modules(connection& conn, const pugi::xml_node& node,
     }
 
     for (auto& cmd : node.children("command")) {
-        mod->add_cmd(cmd.attribute("name").value(),
-                     cmd.attribute("argc").as_ullong(),
-                     cmd.attribute("desc").value());
+        mod->add_command(cmd.attribute("name").value(),
+                         cmd.attribute("argc").as_ullong(),
+                         cmd.attribute("desc").value());
     }
 
     return mod;
@@ -239,7 +239,7 @@ attribute* session::find_attribute(const string& name) {
     return m_mods->find_attribute(name);
 }
 
-cmd* session::find_command(const string& name) {
+command* session::find_command(const string& name) {
     if (!m_mods)
         return nullptr;
 

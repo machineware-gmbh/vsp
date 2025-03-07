@@ -8,35 +8,34 @@
  *                                                                            *
  ******************************************************************************/
 
-#include "vsp-cli/startup_cli.h"
+#include "cli/startup.h"
 
-#include "vsp-cli/session_cli.h"
+#include "cli/session.h"
 
-namespace vsp {
+namespace cli {
 
 using mwr::termcolors;
 
-startup_cli::startup_cli(): m_session(nullptr) {
-    auto& local_sessions = session::get_sessions();
+startup::startup(): m_session(nullptr) {
+    auto& local_sessions = vsp::session::get_sessions();
     m_sessions.insert(m_sessions.end(), local_sessions.begin(),
                       local_sessions.end());
 
-    register_handler(&startup_cli::handle_exit, "exit", "exit the program",
-                     "e");
-    register_handler(&startup_cli::handle_list, "list",
-                     "list available sessions", "l");
-    register_handler(&startup_cli::handle_select, "select",
+    register_handler(&startup::handle_exit, "exit", "exit the program", "e");
+    register_handler(&startup::handle_list, "list", "list available sessions",
+                     "l");
+    register_handler(&startup::handle_select, "select",
                      "connect to an available session by id", "s");
-    register_handler(&startup_cli::handle_connect, "connect",
+    register_handler(&startup::handle_connect, "connect",
                      "connect to a session using <host>:<port>", "c");
 }
 
-bool startup_cli::handle_exit(const string& args) {
+bool startup::handle_exit(const string& args) {
     cout << "exiting..." << endl;
     return false;
 }
 
-bool startup_cli::handle_list(const string& args) {
+bool startup::handle_list(const string& args) {
     if (m_sessions.empty()) {
         cout << "no sessions available" << endl;
         return true;
@@ -53,7 +52,7 @@ bool startup_cli::handle_list(const string& args) {
     return true;
 }
 
-bool startup_cli::handle_select(const string& args) {
+bool startup::handle_select(const string& args) {
     size_t id;
     try {
         id = stoul(args);
@@ -68,18 +67,18 @@ bool startup_cli::handle_select(const string& args) {
     }
 
     m_session = m_sessions[id];
-    session_cli();
+    session();
     return true;
 }
 
-bool startup_cli::handle_connect(const string& args) {
-    vector<string> parts = split(args, ':');
+bool startup::handle_connect(const string& args) {
+    vector<string> parts = mwr::split(args, ':');
     if (parts.size() != 2) {
         cout << "invalid server format - use <server>:<port>" << endl;
         return true;
     }
     string host = parts[0];
-    u16 port;
+    mwr::u16 port;
 
     try {
         port = stoul(parts[1]);
@@ -91,21 +90,21 @@ bool startup_cli::handle_connect(const string& args) {
     for (const auto& s : m_sessions) {
         if (s->host() == host && s->port() == port) {
             m_session = s;
-            session_cli();
+            session();
             return true;
         }
     }
-    auto s = make_shared<session>(host, port);
+    auto s = make_shared<vsp::session>(host, port);
     m_sessions.push_back(s);
     m_session = std::move(s);
-    session_cli();
+    session();
 
     return true;
 }
 
-void startup_cli::session_cli() {
-    class session_cli cli(m_session);
+void startup::session() {
+    class session cli(m_session);
     cli.run();
 }
 
-} // namespace vsp
+} // namespace cli

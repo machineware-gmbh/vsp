@@ -17,7 +17,7 @@
 namespace vsp {
 
 class attribute;
-class cmd;
+class command;
 
 class module : public element
 {
@@ -26,7 +26,7 @@ private:
     string m_version;
     list<module*> m_mods;
     list<attribute*> m_attrs;
-    list<cmd*> m_cmds;
+    list<command*> m_cmds;
 
 public:
     explicit module(const string& name, connection& conn, module* parent,
@@ -43,19 +43,19 @@ public:
 
     module* find_module(const string& mod);
     attribute* find_attribute(const string& name);
-    cmd* find_command(const string& name);
+    command* find_command(const string& name);
 
     module* parent();
 
     void add_module(module* mod);
     void add_attribute(attribute* attr);
     void add_attribute(const string& name, const string& type, size_t count);
-    void add_cmd(cmd* c);
-    void add_cmd(const string& name, size_t argc, const string& desc);
+    void add_command(command* c);
+    void add_command(const string& name, size_t argc, const string& desc);
 
     const list<module*>& get_modules();
     const list<attribute*>& get_attritbutes();
-    const list<cmd*>& get_cmds();
+    const list<command*>& get_commands();
 };
 
 } // namespace vsp

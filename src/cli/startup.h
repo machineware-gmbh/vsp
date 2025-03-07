@@ -8,10 +8,36 @@
  *                                                                            *
  ******************************************************************************/
 
-#include "vsp-cli/startup_cli.h"
+#ifndef CLI_STARTUP_H
+#define CLI_STARTUP_H
 
-int main(int argc, const char* argv[]) {
-    vsp::startup_cli cli;
+#include "cli/cli.h"
 
-    return cli.run();
-}
+#include <vsp.h>
+
+namespace cli {
+
+class startup : public cli
+{
+private:
+    shared_ptr<vsp::session> m_session;
+    vector<shared_ptr<vsp::session>> m_sessions;
+
+    bool handle_exit(const string& args);
+    bool handle_list(const string& args);
+    bool handle_select(const string& args);
+    bool handle_connect(const string& args);
+
+    void session();
+
+public:
+    startup();
+    virtual ~startup() = default;
+
+    startup(const startup&) = delete;
+    startup& operator=(const startup&) = delete;
+};
+
+} // namespace cli
+
+#endif

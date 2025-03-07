@@ -8,16 +8,10 @@
  *                                                                            *
  ******************************************************************************/
 
-#ifndef VSP_H
-#define VSP_H
+#include "cli/startup.h"
 
-#include "vsp/attribute.h"
-#include "vsp/command.h"
-#include "vsp/connection.h"
-#include "vsp/cpureg.h"
-#include "vsp/element.h"
-#include "vsp/module.h"
-#include "vsp/session.h"
-#include "vsp/target.h"
+int main(int argc, const char* argv[]) {
+    cli::startup cli;
 
-#endif
+    return cli.run();
+}

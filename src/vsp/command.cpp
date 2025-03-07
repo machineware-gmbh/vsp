@@ -8,18 +8,18 @@
  *                                                                            *
  ******************************************************************************/
 
-#include "vsp/cmd.h"
+#include "vsp/command.h"
 
 #include "vsp/module.h"
 
 namespace vsp {
 
-cmd::cmd(const string& name, connection& conn, module* parent, size_t argc,
-         const string& desc):
+command::command(const string& name, connection& conn, module* parent,
+                 size_t argc, const string& desc):
     element(name, conn, parent), m_argc(argc), m_desc(desc) {
 }
 
-string cmd::execute(const vector<string>& args) {
+string command::execute(const vector<string>& args) {
     if (args.size() != m_argc) {
         return "need " + to_string(m_argc) + " arguments for " + name() +
                ", have " + to_string(args.size());
@@ -27,7 +27,7 @@ string cmd::execute(const vector<string>& args) {
     return execute(mwr::join(args, ','));
 }
 
-string cmd::execute(const string& args) {
+string command::execute(const string& args) {
     auto resp = m_conn.command("exec," + m_parent->hierarchy_name() + "," +
                                name() + (args.empty() ? "" : "," + args));
     if (!resp)
@@ -43,11 +43,11 @@ string cmd::execute(const string& args) {
     return ss.str();
 }
 
-const char* cmd::desc() const {
+const char* command::desc() const {
     return m_desc.c_str();
 }
 
-size_t cmd::argc() const {
+size_t command::argc() const {
     return m_argc;
 }
 

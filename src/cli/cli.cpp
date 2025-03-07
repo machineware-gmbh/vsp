@@ -8,9 +8,11 @@
  *                                                                            *
  ******************************************************************************/
 
-#include "vsp-cli/cli.h"
+#include "cli/cli.h"
 
-namespace vsp {
+#include <mwr.h>
+
+namespace cli {
 
 using mwr::termcolors;
 
@@ -72,4 +74,4 @@ bool cli::print() {
     return it->second.first(args);
 }
 
-} // namespace vsp
+} // namespace cli
