@@ -1,0 +1,30 @@
+# Ignore build directory
+BUILD/
+build/
+
+# Ignore build files
+*.o
+*.a
+*.so
+*.elf
+*.log
+
+# Ignore setup files
+setup.sh
+
+# Ignore Eclipse files
+.project
+.cproject
+.settings/
+
+# Ignore MSVC files
+.vs/
+CMakeSettings.json
+
+# Language Server
+.clangd
+
+# Ignore VS Code files
+.vscode
+.cache
+compile_commands.json
