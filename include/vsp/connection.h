@@ -11,7 +11,7 @@
 #ifndef VSP_CONNECTION_H
 #define VSP_CONNECTION_H
 
-#include "vsp/cmn.h"
+#include "vsp/common.h"
 
 namespace vsp {
 

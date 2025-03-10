@@ -11,7 +11,7 @@
 #ifndef VSP_CPUREG_H
 #define VSP_CPUREG_H
 
-#include "vsp/cmn.h"
+#include "vsp/common.h"
 #include "vsp/connection.h"
 
 namespace vsp {

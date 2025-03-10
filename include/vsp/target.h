@@ -11,7 +11,7 @@
 #ifndef VSP_TARGET_H
 #define VSP_TARGET_H
 
-#include "vsp/cmn.h"
+#include "vsp/common.h"
 #include "vsp/connection.h"
 #include "vsp/cpureg.h"
 

@@ -8,8 +8,8 @@
  *                                                                            *
  ******************************************************************************/
 
-#ifndef VSP_CMN_H
-#define VSP_CMN_H
+#ifndef VSP_COMMON_H
+#define VSP_COMMON_H
 
 #include <fstream>
 #include <memory>

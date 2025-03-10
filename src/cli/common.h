@@ -8,8 +8,8 @@
  *                                                                            *
  ******************************************************************************/
 
-#ifndef CLI_CMN_H
-#define CLI_CMN_H
+#ifndef CLI_COMMON_H
+#define CLI_COMMON_H
 
 #include <functional>
 #include <iostream>

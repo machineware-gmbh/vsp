@@ -11,7 +11,7 @@
 #ifndef VSP_SESSION_H
 #define VSP_SESSION_H
 
-#include "vsp/cmn.h"
+#include "vsp/common.h"
 #include "vsp/attribute.h"
 #include "vsp/command.h"
 #include "vsp/connection.h"

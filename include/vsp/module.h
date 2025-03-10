@@ -11,7 +11,7 @@
 #ifndef VSP_MODULE_H
 #define VSP_MODULE_H
 
-#include "vsp/cmn.h"
+#include "vsp/common.h"
 #include "vsp/element.h"
 
 namespace vsp {

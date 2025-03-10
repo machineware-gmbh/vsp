@@ -13,7 +13,7 @@
 
 #include "cli/cli.h"
 
-#include "cli/cmn.h"
+#include "cli/common.h"
 #include <vsp.h>
 
 namespace cli {

@@ -11,7 +11,7 @@
 #ifndef CLI_CLI_H
 #define CLI_CLI_H
 
-#include "cli/cmn.h"
+#include "cli/common.h"
 
 namespace cli {
 

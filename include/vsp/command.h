@@ -11,7 +11,7 @@
 #ifndef VSP_COMMAND_H
 #define VSP_COMMAND_H
 
-#include "vsp/cmn.h"
+#include "vsp/common.h"
 #include "vsp/element.h"
 
 namespace vsp {
