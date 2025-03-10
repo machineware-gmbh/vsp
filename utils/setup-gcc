@@ -1,0 +1,31 @@
+#!/bin/bash -e
+
+ ##############################################################################
+ #                                                                            #
+ # Copyright (C) 2025 MachineWare GmbH                                        #
+ # All Rights Reserved                                                        #
+ #                                                                            #
+ # This is work is licensed under the terms described in the LICENSE file     #
+ # found in the root directory of this source tree.                           #
+ #                                                                            #
+ ##############################################################################
+
+home="$(cd $(dirname $(dirname ${BASH_SOURCE[0]})) &>/dev/null && pwd)"
+builds=$@
+
+[ -z "$builds" ] && builds="DEBUG RELEASE ASAN"
+
+for type in $builds; do (
+    prefix=$home/BUILD/$type
+    build=$prefix/.BUILD
+
+    cmake -B $build -G Ninja                 \
+          -DCMAKE_BUILD_TYPE=$type           \
+          -DCMAKE_INSTALL_PREFIX=$prefix     \
+          -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+          -DVSP_TESTS=ON                     \
+          -DVSP_CLI=ON                       \
+          $home
+
+    cmake --build $build -j $(nproc) -- install
+) done
