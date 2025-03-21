@@ -142,7 +142,7 @@ unsigned long long session::cycle() {
     return m_cycle;
 }
 
-string session::reason() const {
+const string& session::reason() const {
     return m_reason;
 }
 
@@ -255,7 +255,7 @@ target* session::find_target(const string& name) {
     return nullptr;
 }
 
-const list<target>& session::targets() const {
+list<target>& session::targets() {
     return m_targets;
 }
 

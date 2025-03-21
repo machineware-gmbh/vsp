@@ -47,8 +47,8 @@ public:
     bool write_vmem(u64 vaddr, const vector<u8>& data);
 
     bool pc(u64& pc);
-    const list<cpureg>& regs() const;
-    const cpureg* find_reg(const string& name) const;
+    list<cpureg>& regs();
+    cpureg* find_reg(const string& name);
 };
 
 } // namespace vsp

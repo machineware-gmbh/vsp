@@ -135,11 +135,11 @@ bool target::pc(u64& pc) {
     return true;
 }
 
-const list<cpureg>& target::regs() const {
+list<cpureg>& target::regs() {
     return m_regs;
 }
 
-const cpureg* target::find_reg(const string& name) const {
+cpureg* target::find_reg(const string& name) {
     for (auto& reg : m_regs) {
         if (strcmp(reg.name(), name.c_str()) == 0)
             return &reg;
