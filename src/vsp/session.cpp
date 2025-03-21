@@ -142,7 +142,7 @@ unsigned long long session::cycle() {
     return m_cycle;
 }
 
-string session::reason() {
+string session::reason() const {
     return m_reason;
 }
 
