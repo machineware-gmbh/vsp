@@ -55,7 +55,7 @@ public:
     const string& vcml_version() const;
     unsigned long long time();
     unsigned long long cycle();
-    string reason();
+    const string& reason() const;
 
     bool is_connected() const;
     void connect();
@@ -73,7 +73,7 @@ public:
     command* find_command(const string& name);
     target* find_target(const string& name);
 
-    const list<target>& targets() const;
+    list<target>& targets();
 
     const char* peer() const;
     const char* host() const;
