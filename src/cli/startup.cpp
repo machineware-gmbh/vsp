@@ -81,7 +81,7 @@ bool startup::handle_connect(const string& args) {
     mwr::u16 port;
 
     try {
-        port = stoul(parts[1]);
+        port = (mwr::u16)stoul(parts[1]);
     } catch (...) {
         cout << "invalid port number" << endl;
         return true;

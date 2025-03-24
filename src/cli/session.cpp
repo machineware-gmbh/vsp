@@ -179,7 +179,7 @@ bool session::handle_detach(const string& args) {
 bool session::handle_kill(const string& args) {
     try {
         m_session->kill();
-    } catch (const mwr::report& e) {
+    } catch (const mwr::report&) {
     }
     cout << "exiting" << endl;
     return false;
