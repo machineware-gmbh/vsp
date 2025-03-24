@@ -23,11 +23,6 @@ jobs:
         with:
           submodules: 'recursive'
 
-      - name: Setup Dependencies
-        run: |
-          sudo apt-get update -y -qq
-          sudo apt-get install build-essential ninja-build
-
       - name: Configure
         run: |
           cmake \
