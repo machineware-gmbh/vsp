@@ -53,7 +53,7 @@ vector<string> connection::decompose(const string& s) {
     size_t i = 0;
 
     while (i < s.size()) {
-        if (s[i] == '\\' and i < s.size() - 1) {
+        if (s[i] == '\\' && i < s.size() - 1) {
             b += s[i + 1];
             i += 2;
         } else if (s[i] == ',') {
@@ -133,7 +133,7 @@ bool connection::send(const string& data) {
             if (m_socket.recv_char() == ACK)
                 return true;
         }
-    } catch (mwr::report& r) {
+    } catch (mwr::report&) {
         return false;
     }
     return false;

@@ -152,7 +152,7 @@ void session::connect() {
 
     try {
         m_conn.connect();
-    } catch (mwr::report& e) {
+    } catch (mwr::report&) {
         return;
     }
 
