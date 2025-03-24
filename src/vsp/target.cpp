@@ -96,7 +96,7 @@ vector<u8> target::read_vmem(u64 vaddr, size_t size) {
 
     ret.reserve(size);
     for (size_t i = 1; i < resp->size(); ++i)
-        ret.emplace_back(stoul(resp->at(i), nullptr, 16));
+        ret.emplace_back((u8)stoul(resp->at(i), nullptr, 16));
 
     return ret;
 }

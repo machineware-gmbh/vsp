@@ -6,15 +6,19 @@ on:
       - 'main'
       - 'dev**'
 
+env:
+  GITHUB_TOKEN: ${{secrets.CI_TOKEN}}
+  BUILD_TYPE: RelWithDebInfo
+
 jobs:
   cmake:
     name: cmake
-    runs-on: ubuntu-22.04
+    runs-on: ${{matrix.os}}
 
     strategy:
       fail-fast: false
       matrix:
-        BUILD_TYPE: [Release, Debug]
+        os: [ubuntu-24.04, ubuntu-22.04, ubuntu-20.04, windows-2022]
 
     steps:
       - name: Checkout
@@ -23,21 +27,17 @@ jobs:
           submodules: 'recursive'
 
       - name: Setup Dependencies
+        if: startsWith(matrix.os, 'ubuntu')
         run: |
           sudo apt-get update -y -qq
-          sudo apt-get install build-essential ninja-build
+          sudo apt-get install -y build-essential clang-tidy ninja-build
 
       - name: Configure
-        run: |
-          cmake \
-            -B ${{github.workspace}}/build \
-            -DCMAKE_BUILD_TYPE=${{matrix.BUILD_TYPE}} \
-            -DVSP_TESTS=ON \
-            -DVSP_CLI=ON
+        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DVSP_TESTS=ON -DVSP_CLI=ON
 
       - name: Build
-        run: cmake --build ${{github.workspace}}/build --config ${{matrix.BUILD_TYPE}} -j $(nproc)
+        run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} -j $(nproc)
 
       - name: Test
         working-directory: ${{github.workspace}}/build
-        run: ctest -C ${{matrix.BUILD_TYPE}} --output-on-failure
+        run: ctest -C ${{env.BUILD_TYPE}} --output-on-failure
