@@ -61,8 +61,8 @@ public:
     void connect();
     void disconnect();
     void kill();
-    void step();
-    void step(u64 ns);
+    void step(bool block = true);
+    void step(u64 ns, bool block = true);
     void stepi(const target& t);
     void run();
     void stop();

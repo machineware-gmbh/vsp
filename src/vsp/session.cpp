@@ -178,19 +178,21 @@ void session::kill() {
     m_conn.command("quit");
 }
 
-void session::step() {
-    step(m_quantum_ns);
+void session::step(bool block) {
+    step(m_quantum_ns, block);
 }
 
-void session::step(u64 ns) {
+void session::step(u64 ns, bool block) {
     update_status();
     if (!m_running) {
         m_running = true;
         m_conn.command("resume," + to_string(ns) + "ns");
     }
 
-    while (m_running)
-        update_status();
+    if (block) {
+        while (m_running)
+            update_status();
+    }
 }
 
 void session::stepi(const target& t) {
