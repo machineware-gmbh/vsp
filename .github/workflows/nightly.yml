@@ -15,13 +15,23 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [self-hosted-ubuntu-22.04, self-hosted-ubuntu-20.04, self-hosted-rhel-8, self-hosted-ubuntu-22.04-arm64, self-hosted-windows-2022]
+        os: [ubuntu-24.04, ubuntu-22.04, ubuntu-20.04, windows-2022]
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           submodules: 'recursive'
+
+      - name: Setup Dependencies
+        if: startsWith(matrix.os, 'ubuntu')
+        run: |
+          sudo apt-get update -y -qq
+          sudo apt-get install -y build-essential clang-tidy ninja-build
+
+      - name: Setup Dependencies
+        if: startsWith(matrix.os, 'windows')
+        run: choco install -y ninja llvm
 
       - name: Configure
         run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DVSP_TESTS=ON -DVSP_CLI=ON
