@@ -28,18 +28,8 @@ jobs:
         with:
           submodules: 'recursive'
 
-      - name: Setup Dependencies
-        run: |
-          sudo apt-get update -y -qq
-          sudo apt-get install build-essential ninja-build
-
       - name: Configure
-        run: |
-          cmake \
-            -B ${{github.workspace}}/build \
-            -DCMAKE_BUILD_TYPE=${{matrix.sanitizer}} \
-            -DVSP_TESTS=ON \
-            -DVSP_CLI=ON
+        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{matrix.sanitizer}} -DVSP_TESTS=ON -DVSP_CLI=ON
 
       - name: Build
         run: cmake --build ${{github.workspace}}/build --config ${{matrix.sanitizer}} -j $(nproc)

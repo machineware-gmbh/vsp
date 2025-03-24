@@ -27,12 +27,7 @@ jobs:
           submodules: 'recursive'
 
       - name: Configure
-        run: |
-          cmake \
-            -B ${{github.workspace}}/build \
-            -DCMAKE_BUILD_TYPE=${{matrix.BUILD_TYPE}} \
-            -DVSP_TESTS=ON \
-            -DVSP_CLI=ON
+        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{matrix.BUILD_TYPE}} -DVSP_TESTS=ON -DVSP_CLI=ON
 
       - name: Build
         run: cmake --build ${{github.workspace}}/build --config ${{matrix.BUILD_TYPE}} -j $(nproc)
