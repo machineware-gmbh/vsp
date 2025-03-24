@@ -25,9 +25,9 @@ session::session(const string& host, u16 port):
     m_vcml_version(),
     m_running(false),
     m_reason(),
-    m_time(0),
+    m_time_ns(0),
     m_cycle(0),
-    m_quantum(0),
+    m_quantum_ns(0),
     m_mods(nullptr),
     m_targets() {
 }
@@ -50,7 +50,7 @@ bool session::update_quantum() {
     if (!connection::check_response(resp, 2))
         return false;
 
-    m_quantum = stoi(resp->at(1));
+    m_quantum_ns = stoi(resp->at(1));
 
     return true;
 }
@@ -68,7 +68,7 @@ bool session::update_status() {
         m_reason = resp->at(1).substr(8);
     }
 
-    m_time = stoull(resp->at(2));
+    m_time_ns = stoull(resp->at(2));
     m_cycle = stoull(resp->at(3));
 
     return true;
@@ -132,9 +132,9 @@ const string& session::vcml_version() const {
     return m_vcml_version;
 }
 
-unsigned long long session::time() {
+unsigned long long session::time_ns() {
     update_status();
-    return m_time;
+    return m_time_ns;
 }
 
 unsigned long long session::cycle() {
@@ -179,14 +179,14 @@ void session::kill() {
 }
 
 void session::step() {
-    step(m_quantum);
+    step(m_quantum_ns);
 }
 
-void session::step(u64 ps) {
+void session::step(u64 ns) {
     update_status();
     if (!m_running) {
         m_running = true;
-        m_conn.command("resume," + to_string(ps) + "ps");
+        m_conn.command("resume," + to_string(ns) + "ns");
     }
 
     while (m_running)
