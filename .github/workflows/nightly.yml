@@ -29,10 +29,6 @@ jobs:
           sudo apt-get update -y -qq
           sudo apt-get install -y build-essential clang-tidy ninja-build
 
-      - name: Setup Dependencies
-        if: startsWith(matrix.os, 'windows')
-        run: choco install -y ninja llvm
-
       - name: Configure
         run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DVSP_TESTS=ON -DVSP_CLI=ON
 
