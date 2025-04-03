@@ -32,7 +32,7 @@ public:
     command& operator=(const command&) = delete;
 
     string execute(const vector<string>& args);
-    string execute(const string& args);
+    string execute(const string& args = "");
 
     const char* desc() const;
     size_t argc() const;

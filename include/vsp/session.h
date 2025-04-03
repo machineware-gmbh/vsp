@@ -28,9 +28,9 @@ private:
     string m_vcml_version;
     bool m_running;
     string m_reason;
-    unsigned long long m_time;
+    unsigned long long m_time_ns;
     unsigned long long m_cycle;
-    int m_quantum;
+    int m_quantum_ns;
     module* m_mods;
     list<target> m_targets;
 
@@ -53,7 +53,7 @@ public:
     bool running();
     const string& sysc_version() const;
     const string& vcml_version() const;
-    unsigned long long time();
+    unsigned long long time_ns();
     unsigned long long cycle();
     const string& reason() const;
 
@@ -61,8 +61,8 @@ public:
     void connect();
     void disconnect();
     void kill();
-    void step();
-    void step(u64 ps);
+    void step(bool block = true);
+    void step(u64 ns, bool block = true);
     void stepi(const target& t);
     void run();
     void stop();

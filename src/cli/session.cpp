@@ -138,7 +138,7 @@ bool session::handle_info(const string& args) {
     print_report_line("VCML Version", m_session->vcml_version());
     print_report_line("SystemC Version", m_session->sysc_version());
     print_report_line("Simulation Time",
-                      mwr::mkstr("%.9f", m_session->time() / 1e9));
+                      mwr::mkstr("%.9fs", m_session->time_ns() / 1e9));
     print_report_line("Delta Cycle", to_string(m_session->cycle()));
     print_report_line("CLI Version", VSP_VERSION_STRING);
     return true;
@@ -203,7 +203,7 @@ bool session::handle_exec(const string& args) {
 string session::prompt() const {
     stringstream ss;
     ss << termcolors::BOLD << termcolors::WHITE << "[" << std::fixed
-       << std::setprecision(9) << m_session->time() / 1e9 << "s] "
+       << std::setprecision(9) << m_session->time_ns() / 1e9 << "s] "
        << termcolors::CLEAR;
     ss << termcolors::YELLOW << m_session->peer() << termcolors::CLEAR;
     ss << " " << termcolors::BOLD << termcolors::CYAN
