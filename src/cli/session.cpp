@@ -28,14 +28,12 @@ session::session(shared_ptr<vsp::session> s):
                      "executes the given <command> [args...]", "x");
     register_handler(&session::handle_info, "info",
                      "print information about the current session", "i");
-    register_handler(&session::handle_kill, "kill",
-                     "terminate current session", "k");
     register_handler(
         &session::handle_list, "list",
         "displays the module hierarchy onwards from current module", "ls");
     register_handler(&session::handle_quit, "quit", "disconnect from session",
                      "q");
-    register_handler(&session::handle_detach, "detach", "deatch from session",
+    register_handler(&session::handle_detach, "detach", "terminate session",
                      "d");
     register_handler(&session::handle_read, "read",
                      "reads the given <attribute>", "r");
@@ -167,18 +165,14 @@ bool session::handle_stop(const string& args) {
     return true;
 }
 
-bool session::handle_quit(const string& args) {
+bool session::handle_detach(const string& args) {
     m_session->disconnect();
     return false;
 }
 
-bool session::handle_detach(const string& args) {
-    return false;
-}
-
-bool session::handle_kill(const string& args) {
+bool session::handle_quit(const string& args) {
     try {
-        m_session->kill();
+        m_session->quit();
     } catch (const mwr::report&) {
     }
     cout << "exiting" << endl;

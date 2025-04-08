@@ -174,8 +174,13 @@ bool session::is_connected() const {
     return m_conn.is_connected();
 }
 
-void session::kill() {
-    m_conn.command("quit");
+void session::quit() {
+    try {
+        m_conn.command("quit");
+    } catch (mwr::report&) {
+        // excpect disconnect
+    }
+    disconnect();
 }
 
 void session::step(bool block) {

@@ -60,7 +60,7 @@ public:
     bool is_connected() const;
     void connect();
     void disconnect();
-    void kill();
+    void quit();
     void step(bool block = true);
     void step(u64 ns, bool block = true);
     void stepi(const target& t);
