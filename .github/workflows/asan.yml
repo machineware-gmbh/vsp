@@ -37,7 +37,7 @@ jobs:
         run: cmake -B BUILD -G Ninja -DCMAKE_BUILD_TYPE=${{matrix.sanitizer}} -DVSP_TESTS=ON -DVSP_CLI=ON
 
       - name: Build
-        run: cmake --build
+        run: cmake --build BUILD
 
       - name: Test
         run: ctest --test-dir BUILD --verbose
