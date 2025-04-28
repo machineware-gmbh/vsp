@@ -30,11 +30,25 @@ jobs:
       - name: Configure
         run: |
           cmake \
-            -B ${{github.workspace}}/build \
+            -B BUILD \
+            -G Ninja \
             -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} \
             -DVSP_TESTS=ON \
             -DVSP_CLI=ON \
             -DVSP_LINTER=clang-tidy
 
       - name: Build
-        run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} -j $(nproc)
+        run: cmake --build BUILD
+
+      - name: Upload Logs
+        uses: actions/upload-artifact@v4
+        if: '!cancelled()'
+        with:
+          name: vsp-build-logs-lint
+          path: |
+              BUILD/.ninja_log
+              BUILD/CMakeCache.txt
+          include-hidden-files: true
+          retention-days: 7
+
+
