@@ -60,3 +60,4 @@ jobs:
               BUILD/Testing/Temporary/LastTest.log
           include-hidden-files: true
           retention-days: 7
+
