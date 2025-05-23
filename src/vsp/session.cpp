@@ -32,6 +32,10 @@ session::session(const string& host, u16 port):
     m_targets() {
 }
 
+session::~session() {
+    disconnect();
+}
+
 bool session::update_version() {
     optional<vector<string>> resp = m_conn.command("version");
 
@@ -111,6 +115,8 @@ bool session::update_modules() {
 
     pugi::xml_node hierachy = list.child("hierarchy");
 
+    if (m_mods != nullptr)
+        delete m_mods;
     m_mods = xml_parse_modules(m_conn, hierachy, nullptr);
 
     for (auto& t : hierachy.children("target"))
@@ -167,6 +173,9 @@ void session::connect() {
 
 void session::disconnect() {
     m_conn.disconnect();
+
+    if (m_mods != nullptr)
+        delete m_mods;
     m_mods = nullptr;
 }
 

@@ -44,7 +44,7 @@ private:
 
 public:
     explicit session(const string& host, u16 port);
-    virtual ~session() = default;
+    virtual ~session();
 
     session() = delete;
     session(const session&) = delete;
