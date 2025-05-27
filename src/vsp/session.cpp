@@ -115,8 +115,7 @@ bool session::update_modules() {
 
     pugi::xml_node hierachy = list.child("hierarchy");
 
-    if (m_mods != nullptr)
-        delete m_mods;
+    delete m_mods;
     m_mods = xml_parse_modules(m_conn, hierachy, nullptr);
 
     for (auto& t : hierachy.children("target"))
@@ -174,8 +173,7 @@ void session::connect() {
 void session::disconnect() {
     m_conn.disconnect();
 
-    if (m_mods != nullptr)
-        delete m_mods;
+    delete m_mods;
     m_mods = nullptr;
 }
 
