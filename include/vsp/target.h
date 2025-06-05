@@ -35,7 +35,7 @@ public:
     target(const target&) = delete;
     target& operator=(const target&) = delete;
 
-    const string& name() const;
+    const char* name() const;
 
     void step(size_t steps = 1);
     u64 virt_to_phys(u64 va);
