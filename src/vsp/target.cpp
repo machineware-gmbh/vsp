@@ -33,8 +33,8 @@ bool target::update_regs() {
     return true;
 }
 
-const string& target::name() const {
-    return m_name;
+const char* target::name() const {
+    return m_name.c_str();
 }
 
 void target::step(size_t steps) {

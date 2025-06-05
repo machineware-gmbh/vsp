@@ -19,7 +19,8 @@ cpureg::cpureg(connection& conn, const string& name, target& parent):
 }
 
 bool cpureg::update_size() {
-    auto resp = m_conn.command("getr," + m_parent.name() + "," + m_name);
+    auto resp = m_conn.command("getr," + string(m_parent.name()) + "," +
+                               m_name);
     if (!resp)
         return false;
     if (resp->at(0) != "OK")
@@ -34,7 +35,8 @@ size_t cpureg::size() const {
 
 bool cpureg::get_value(vector<u8>& ret) {
     ret.clear();
-    auto resp = m_conn.command("getr," + m_parent.name() + "," + m_name);
+    auto resp = m_conn.command("getr," + string(m_parent.name()) + "," +
+                               m_name);
     if (!connection::check_response(resp, m_size + 1))
         return false;
 
