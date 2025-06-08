@@ -213,7 +213,7 @@ void session::stepi(const target& t) {
     update_status();
     if (!m_running) {
         m_running = true;
-        m_conn.command("step," + t.name());
+        m_conn.command("step," + string(t.name()));
     }
 
     while (m_running)
@@ -264,7 +264,7 @@ command* session::find_command(const string& name) {
 
 target* session::find_target(const string& name) {
     for (auto& t : m_targets) {
-        if (t.name() == name)
+        if (strcmp(t.name(), name.c_str()) == 0)
             return &t;
     }
 

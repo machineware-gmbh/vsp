@@ -64,7 +64,7 @@ attribute* module::find_attribute(const string& name) {
     if (dot_pos == string::npos) {
         auto it = find_if(m_attrs.begin(), m_attrs.end(),
                           [&name](const class attribute* a) -> bool {
-                              return a->name() == name;
+                              return strcmp(a->name(), name.c_str()) == 0;
                           });
         if (it == m_attrs.end())
             return nullptr;
@@ -82,9 +82,10 @@ command* module::find_command(const string& name) {
     size_t dot_pos = name.find_last_of('.');
 
     if (dot_pos == string::npos) {
-        auto it = find_if(
-            m_cmds.begin(), m_cmds.end(),
-            [&name](const command* c) -> bool { return c->name() == name; });
+        auto it = find_if(m_cmds.begin(), m_cmds.end(),
+                          [&name](const command* c) -> bool {
+                              return strcmp(c->name(), name.c_str()) == 0;
+                          });
         if (it == m_cmds.end())
             return nullptr;
         return *it;
