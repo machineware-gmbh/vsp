@@ -168,6 +168,11 @@ void session::connect() {
     update_version();
     update_quantum();
     update_status();
+
+    stop();
+    while (running())
+        mwr::cpu_yield();
+
     update_modules();
 }
 
