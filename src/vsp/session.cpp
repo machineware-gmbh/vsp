@@ -300,17 +300,14 @@ list<shared_ptr<session>>& session::get_sessions() {
         if (!file.is_open())
             continue;
 
-        string host;
-        getline(file, host);
-
-        string data;
-        getline(file, data);
+        string host, data;
+        if (!getline(file, host) || !getline(file, data))
+            continue;
         u16 port = stoi(data);
 
         size_t count = 0;
         while (getline(file, data))
             count++;
-
         if (count != 2)
             continue;
 
