@@ -300,15 +300,19 @@ list<shared_ptr<session>>& session::get_sessions() {
         if (!file.is_open())
             continue;
 
+        string host;
+        getline(file, host);
+
         string data;
         getline(file, data);
+        u16 port = stoi(data);
 
-        vector<string> data_split = split(data, ':');
-        if (data_split.size() != 4)
+        size_t count = 0;
+        while (getline(file, data))
+            count++;
+
+        if (count != 2)
             continue;
-
-        string host = data_split[0];
-        u16 port = stoi(data_split[1]);
 
         for (const auto& s : local_sessions) {
             if (s->m_conn.host() == host && s->m_conn.port() == port)
