@@ -305,12 +305,6 @@ list<shared_ptr<session>>& session::get_sessions() {
             continue;
         u16 port = stoi(data);
 
-        size_t count = 0;
-        while (getline(file, data))
-            count++;
-        if (count != 2)
-            continue;
-
         for (const auto& s : local_sessions) {
             if (s->m_conn.host() == host && s->m_conn.port() == port)
                 continue;
