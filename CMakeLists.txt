@@ -9,7 +9,7 @@
  ##############################################################################
 
 cmake_minimum_required(VERSION 3.16)
-project(vsp VERSION 2025.03.10 LANGUAGES CXX)
+project(vsp VERSION 2025.07.29 LANGUAGES CXX)
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 include(FindGithubRepo)
