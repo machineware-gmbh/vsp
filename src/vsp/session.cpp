@@ -303,6 +303,7 @@ list<shared_ptr<session>>& session::get_sessions() {
         string host, data;
         if (!getline(file, host) || !getline(file, data))
             continue;
+
         u16 port = stoi(data);
 
         for (const auto& s : local_sessions) {
