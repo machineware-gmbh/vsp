@@ -58,25 +58,32 @@ u64 target::insert_breakpoint(u64 addr) {
     if (!connection::check_response(resp, 2))
         return 0;
 
-    u64 id = stoull(resp->at(1), nullptr, 16);
-    m_bp[id] = addr;
+    const string& msg = resp->at(1);
+    string bp_str = msg.substr(msg.find_last_of(' ') + 1);
+
+    u64 id = stoull(bp_str, nullptr, 10);
+    m_bp[addr] = id;
     return id;
 }
 
 bool target::remove_breakpoint_id(u64 id) {
-    bool found = false;
-    for (auto& [a, i] : m_bp) {
-        if (i == id) {
-            found = true;
+    auto found_it = m_bp.end();
+    for (auto it = m_bp.begin(); it != m_bp.end(); it++) {
+        if (it->second == id) {
+            found_it = it;
             break;
         }
     }
 
-    if (!found)
+    if (found_it == m_bp.end())
         return false;
 
     auto resp = m_conn.command("rmbp," + to_string(id));
-    return connection::check_response(resp, 1);
+    if (!connection::check_response(resp, 1))
+        return false;
+
+    m_bp.erase(found_it);
+    return true;
 }
 
 bool target::remove_breakpoint(u64 addr) {
@@ -129,8 +136,8 @@ bool target::pc(u64& pc) {
         return false;
 
     pc = 0;
-    for (auto& v : val)
-        pc = (pc << 8) | v;
+    for (auto it = val.rbegin(); it != val.rend(); ++it)
+        pc = (pc << 8) | *it;
 
     return true;
 }
