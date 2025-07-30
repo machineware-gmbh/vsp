@@ -13,7 +13,7 @@
 namespace vsp {
 
 target::target(connection& conn, const string& name):
-    m_conn(conn), m_name(name) {
+    m_conn(conn), m_name(name), m_regs() {
     update_regs();
     vector<u8> data(4, 0);
     m_regs.front().get_value(data);
@@ -42,7 +42,7 @@ void target::step(size_t steps) {
         m_conn.command("step," + m_name);
 }
 
-mwr::u64 target::virt_to_phys(mwr::u64 va) {
+u64 target::virt_to_phys(u64 va) {
     auto resp = m_conn.command("vapa," + m_name + "," + to_string(va));
     if (!connection::check_response(resp, 2))
         return 0;
@@ -50,47 +50,23 @@ mwr::u64 target::virt_to_phys(mwr::u64 va) {
     return stoull(resp->at(1), nullptr, 16);
 }
 
-u64 target::insert_breakpoint(u64 addr) {
-    if (m_bp.count(addr))
-        return m_bp.at(addr);
-
+optional<breakpoint> target::insert_breakpoint(u64 addr) {
     auto resp = m_conn.command("mkbp," + m_name + "," + to_string(addr));
     if (!connection::check_response(resp, 2))
-        return 0;
+        return nullopt;
 
     const string& msg = resp->at(1);
-    string bp_str = msg.substr(msg.find_last_of(' ') + 1);
+    string bpstr = msg.substr(msg.find_last_of(' ') + 1);
 
-    u64 id = stoull(bp_str, nullptr, 10);
-    m_bp[addr] = id;
-    return id;
+    breakpoint bp;
+    bp.addr = addr;
+    bp.id = stoull(bpstr, nullptr, 16);
+    return bp;
 }
 
-bool target::remove_breakpoint_id(u64 id) {
-    auto found_it = m_bp.end();
-    for (auto it = m_bp.begin(); it != m_bp.end(); it++) {
-        if (it->second == id) {
-            found_it = it;
-            break;
-        }
-    }
-
-    if (found_it == m_bp.end())
-        return false;
-
-    auto resp = m_conn.command("rmbp," + to_string(id));
-    if (!connection::check_response(resp, 1))
-        return false;
-
-    m_bp.erase(found_it);
-    return true;
-}
-
-bool target::remove_breakpoint(u64 addr) {
-    if (!m_bp.count(addr))
-        return false;
-
-    return remove_breakpoint_id(m_bp.at(addr));
+bool target::remove_breakpoint(const breakpoint& bp) {
+    auto resp = m_conn.command("rmbp," + to_string(bp.id));
+    return connection::check_response(resp, 1);
 }
 
 vector<u8> target::read_vmem(u64 vaddr, size_t size) {
