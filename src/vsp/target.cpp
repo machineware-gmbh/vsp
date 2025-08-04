@@ -60,7 +60,7 @@ optional<breakpoint> target::insert_breakpoint(u64 addr) {
 
     breakpoint bp;
     bp.addr = addr;
-    bp.id = stoull(bpstr, nullptr, 16);
+    bp.id = stoull(bpstr, nullptr, 10);
     return bp;
 }
 
