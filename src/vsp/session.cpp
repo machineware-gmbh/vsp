@@ -67,7 +67,7 @@ bool session::update_status() {
 
     if (resp->at(1) == "running") {
         m_running = true;
-    } else if (resp->at(1).compare("stopped:") >= 0) {
+    } else {
         m_running = false;
         m_reason = resp->at(1).substr(8);
     }

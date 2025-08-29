@@ -22,6 +22,15 @@ struct breakpoint {
     u64 id;
 };
 
+enum class watchpoint_type { READ, WRITE, ACCESS };
+
+struct watchpoint {
+    u64 addr;
+    u64 size;
+    u64 id;
+    watchpoint_type type;
+};
+
 class target
 {
 private:
@@ -43,8 +52,13 @@ public:
 
     void step(size_t steps = 1);
     u64 virt_to_phys(u64 va);
+
     optional<breakpoint> insert_breakpoint(u64 addr);
     bool remove_breakpoint(const breakpoint& bp);
+
+    optional<watchpoint> insert_watchpoint(u64 addr, u64 size,
+                                           watchpoint_type type);
+    bool remove_watchpoint(const watchpoint& wp);
 
     vector<u8> read_vmem(u64 vaddr, size_t size);
     bool write_vmem(u64 vaddr, const vector<u8>& data);
