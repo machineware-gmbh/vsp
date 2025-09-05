@@ -69,6 +69,31 @@ bool target::remove_breakpoint(const breakpoint& bp) {
     return connection::check_response(resp, 1);
 }
 
+optional<watchpoint> target::insert_watchpoint(u64 addr, u64 size,
+                                               watchpoint_type type) {
+    auto resp = m_conn.command("mkwp," + m_name + "," + to_string(addr) + "," +
+                               to_string(size) + "," +
+                               to_string(static_cast<u32>(type)));
+    if (!connection::check_response(resp, 2))
+        return nullopt;
+
+    const string& msg = resp->at(1);
+    string wpstr = msg.substr(msg.find_last_of(' ') + 1);
+
+    watchpoint wp;
+    wp.addr = addr;
+    wp.size = size;
+    wp.id = stoull(wpstr, nullptr, 10);
+    wp.type = type;
+    return wp;
+}
+
+bool target::remove_watchpoint(const watchpoint& wp) {
+    auto resp = m_conn.command("rmwp," + to_string(wp.id) + "," +
+                               to_string(static_cast<u32>(wp.type)));
+    return connection::check_response(resp, 1);
+}
+
 vector<u8> target::read_vmem(u64 vaddr, size_t size) {
     vector<u8> ret;
     string cmd = "vread," + m_name + "," + to_string(vaddr) + ',' +
