@@ -14,10 +14,44 @@
 #include "vsp/module.h"
 
 #include <pugixml.hpp>
+#include <sstream>
+
+using std::istringstream;
+using std::getline;
+using std::min;
+using std::stoi;
+using std::stoll;
 
 namespace vsp {
 
 list<shared_ptr<session>> session::local_sessions;
+
+// converts a string of bytes to a vector of bytes
+// "ddccbbaa" -> { aa, bb, cc, dd }
+static void strhex(u8* buffer, const string& bytes) {
+    if (!buffer)
+        return;
+
+    const size_t dst_len = stop_reason::DATA_SIZE;
+    memset(buffer, 0, dst_len);
+
+    if (bytes.empty())
+        return;
+
+    const size_t src_len = min(bytes.size(), dst_len);
+    const size_t src_off = (bytes.size() > dst_len) ? bytes.size() - dst_len
+                                                    : 0;
+
+    size_t src_idx = src_len - src_off, dst_idx = 0;
+    size_t stride = (src_len & 1) ? 1 : 2;
+
+    while (src_idx != 0) {
+        src_idx -= stride;
+        string chunk = bytes.substr(src_idx, stride);
+        buffer[dst_idx++] = (u8)stoi(chunk, 0, 16);
+        stride = 2;
+    }
+}
 
 session::session(const string& host, u16 port):
     m_conn(host, port),
@@ -69,13 +103,98 @@ bool session::update_status() {
         m_running = true;
     } else {
         m_running = false;
-        m_reason = resp->at(1).substr(8);
+        update_reason(resp->at(1).substr(8));
     }
 
     m_time_ns = stoull(resp->at(2));
     m_cycle = stoull(resp->at(3));
 
     return true;
+}
+
+void session::update_reason(const string& reason) {
+    if (reason.empty())
+        return;
+
+    istringstream ss(reason);
+    stop_reason newreason;
+
+    string type;
+    getline(ss, type, ':');
+    newreason.reason = (type == "user")         ? VSP_STOP_REASON_USER
+                       : (type == "breakpoint") ? VSP_STOP_REASON_BREAKPOINT
+                       : (type == "target")     ? VSP_STOP_REASON_STEP_COMPLETE
+                       : (type == "rwatchpoint") ? VSP_STOP_REASON_RWATCHPOINT
+                       : (type == "wwatchpoint") ? VSP_STOP_REASON_WWATCHPOINT
+                                                 : VSP_STOP_REASON_COUNT;
+
+    switch (newreason.reason) {
+    case VSP_STOP_REASON_USER: {
+        // nothing to do
+    } break;
+    case VSP_STOP_REASON_BREAKPOINT: {
+        string id;
+        getline(ss, id, ':');
+        newreason.breakpoint.id = stoll(id, 0, 10);
+
+        string time;
+        getline(ss, time, '\n');
+        newreason.step_complete.time = stoll(time, 0, 10);
+    } break;
+    case VSP_STOP_REASON_STEP_COMPLETE: {
+        string target;
+        getline(ss, target, ':');
+        newreason.step_complete.tgt = find_target(target);
+
+        string time;
+        getline(ss, time, '\n');
+        newreason.step_complete.time = stoll(time, 0, 10);
+    } break;
+    case VSP_STOP_REASON_RWATCHPOINT: {
+        string id;
+        getline(ss, id, ':');
+        newreason.rwatchpoint.id = stoll(id, 0, 10);
+
+        string addr;
+        getline(ss, addr, ':');
+        newreason.rwatchpoint.addr = stoll(addr, 0, 16);
+
+        string size;
+        getline(ss, size, ':');
+        newreason.rwatchpoint.addr = stoll(size, 0, 10);
+
+        string time;
+        getline(ss, time, '\n');
+        newreason.rwatchpoint.time = stoll(time, 0, 10);
+    } break;
+    case VSP_STOP_REASON_WWATCHPOINT: {
+        string id;
+        getline(ss, id, ':');
+        newreason.wwatchpoint.id = stoll(id, 0, 10);
+
+        string addr;
+        getline(ss, addr, ':');
+        newreason.wwatchpoint.addr = stoll(addr, 0, 16);
+
+        string data;
+        getline(ss, data, ':');
+
+        if (data.size() > stop_reason::DATA_SIZE)
+            mwr::log_error(
+                "wwatchpoint: written %lu bytes (>%lu), data dropped",
+                data.size(), stop_reason::DATA_SIZE);
+
+        strhex(newreason.wwatchpoint.data, data);
+
+        string time;
+        getline(ss, time, '\n');
+        newreason.wwatchpoint.time = stoll(time, 0, 10);
+
+    } break;
+    default:
+        break;
+    }
+    m_reason = newreason;
 }
 
 module* xml_parse_modules(connection& conn, const pugi::xml_node& node,
@@ -148,7 +267,7 @@ unsigned long long session::cycle() {
     return m_cycle;
 }
 
-const string& session::reason() const {
+const stop_reason& session::reason() const {
     return m_reason;
 }
 

@@ -161,7 +161,7 @@ bool session::handle_stop(const string& args) {
     m_session->stop();
     while (m_session->running())
         ;
-    cout << "stopped by " << m_session->reason() << endl;
+    cout << "stopped by " << m_session->reason().str() << endl;
     return true;
 }
 
