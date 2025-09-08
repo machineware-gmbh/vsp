@@ -22,7 +22,11 @@ struct breakpoint {
     u64 id;
 };
 
-enum class watchpoint_type { READ, WRITE, ACCESS };
+enum watchpoint_type {
+    WP_READ = 1,
+    WP_WRITE = 2,
+    WP_ACCESS = WP_READ | WP_WRITE
+};
 
 struct watchpoint {
     u64 addr;
