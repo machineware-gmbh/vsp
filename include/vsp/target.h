@@ -29,7 +29,7 @@ enum watchpoint_type {
 };
 
 struct watchpoint {
-    u64 addr;
+    u64 base;
     u64 size;
     u64 id;
     watchpoint_type type;
@@ -60,7 +60,7 @@ public:
     optional<breakpoint> insert_breakpoint(u64 addr);
     bool remove_breakpoint(const breakpoint& bp);
 
-    optional<watchpoint> insert_watchpoint(u64 addr, u64 size,
+    optional<watchpoint> insert_watchpoint(u64 base, u64 size,
                                            watchpoint_type type);
     bool remove_watchpoint(const watchpoint& wp);
 

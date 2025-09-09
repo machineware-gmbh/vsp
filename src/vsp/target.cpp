@@ -12,6 +12,10 @@
 
 namespace vsp {
 
+static const char* wp_type_str(watchpoint_type type) {
+    return (type == WP_READ) ? "r" : (type == WP_WRITE) ? "w" : "rw";
+}
+
 target::target(connection& conn, const string& name):
     m_conn(conn), m_name(name), m_regs() {
     update_regs();
@@ -69,11 +73,11 @@ bool target::remove_breakpoint(const breakpoint& bp) {
     return connection::check_response(resp, 1);
 }
 
-optional<watchpoint> target::insert_watchpoint(u64 addr, u64 size,
+optional<watchpoint> target::insert_watchpoint(u64 base, u64 size,
                                                watchpoint_type type) {
-    auto resp = m_conn.command("mkwp," + m_name + "," + to_string(addr) + "," +
+    auto resp = m_conn.command("mkwp," + m_name + "," + to_string(base) + "," +
                                to_string(size) + "," +
-                               to_string(static_cast<u32>(type)));
+                               string(wp_type_str(type)));
     if (!connection::check_response(resp, 2))
         return nullopt;
 
@@ -81,7 +85,7 @@ optional<watchpoint> target::insert_watchpoint(u64 addr, u64 size,
     string wpstr = msg.substr(msg.find_last_of(' ') + 1);
 
     watchpoint wp;
-    wp.addr = addr;
+    wp.base = base;
     wp.size = size;
     wp.id = stoull(wpstr, nullptr, 10);
     wp.type = type;
@@ -90,7 +94,7 @@ optional<watchpoint> target::insert_watchpoint(u64 addr, u64 size,
 
 bool target::remove_watchpoint(const watchpoint& wp) {
     auto resp = m_conn.command("rmwp," + to_string(wp.id) + "," +
-                               to_string(static_cast<u32>(wp.type)));
+                               string(wp_type_str(wp.type)));
     return connection::check_response(resp, 1);
 }
 
