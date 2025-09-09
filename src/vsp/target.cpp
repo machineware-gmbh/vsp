@@ -12,8 +12,16 @@
 
 namespace vsp {
 
-static const char* wp_type_str(watchpoint_type type) {
-    return (type == WP_READ) ? "r" : (type == WP_WRITE) ? "w" : "rw";
+static string wp_type_str(watchpoint_type type) {
+    switch (type) {
+    case WP_READ:
+        return "r";
+    case WP_WRITE:
+        return "w";
+    case WP_ACCESS:
+    default:
+        return "rw";
+    }
 }
 
 target::target(connection& conn, const string& name):
@@ -76,8 +84,7 @@ bool target::remove_breakpoint(const breakpoint& bp) {
 optional<watchpoint> target::insert_watchpoint(u64 base, u64 size,
                                                watchpoint_type type) {
     auto resp = m_conn.command("mkwp," + m_name + "," + to_string(base) + "," +
-                               to_string(size) + "," +
-                               string(wp_type_str(type)));
+                               to_string(size) + "," + wp_type_str(type));
     if (!connection::check_response(resp, 2))
         return nullopt;
 
@@ -94,7 +101,7 @@ optional<watchpoint> target::insert_watchpoint(u64 base, u64 size,
 
 bool target::remove_watchpoint(const watchpoint& wp) {
     auto resp = m_conn.command("rmwp," + to_string(wp.id) + "," +
-                               string(wp_type_str(wp.type)));
+                               wp_type_str(wp.type));
     return connection::check_response(resp, 1);
 }
 
