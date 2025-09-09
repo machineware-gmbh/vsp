@@ -28,19 +28,17 @@ list<shared_ptr<session>> session::local_sessions;
 
 // converts a string of bytes to a vector of bytes
 // "ddccbbaa" -> { aa, bb, cc, dd }
-static void strhex(u8* buffer, const string& bytes) {
+static void strhex(u8* buffer, size_t buflen, const string& bytes) {
     if (!buffer)
         return;
 
-    const size_t dst_len = stop_reason::DATA_SIZE;
-    memset(buffer, 0, dst_len);
+    memset(buffer, 0, buflen);
 
     if (bytes.empty())
         return;
 
-    const size_t src_len = min(bytes.size(), dst_len);
-    const size_t src_off = (bytes.size() > dst_len) ? bytes.size() - dst_len
-                                                    : 0;
+    size_t src_len = min(bytes.size(), buflen);
+    size_t src_off = (bytes.size() > buflen) ? bytes.size() - buflen : 0;
 
     size_t src_idx = src_len - src_off, dst_idx = 0;
     size_t stride = (src_len & 1) ? 1 : 2;
@@ -51,6 +49,43 @@ static void strhex(u8* buffer, const string& bytes) {
         buffer[dst_idx++] = (u8)stoi(chunk, 0, 16);
         stride = 2;
     }
+}
+
+static stop_reason_t stop_reason_from_string(const string& s) {
+    if (s == "user")
+        return VSP_STOP_REASON_USER;
+    if (s == "breakpoint")
+        return VSP_STOP_REASON_BREAKPOINT;
+    if (s == "target")
+        return VSP_STOP_REASON_STEP_COMPLETE;
+    if (s == "rwatchpoint")
+        return VSP_STOP_REASON_RWATCHPOINT;
+    if (s == "wwatchpoint")
+        return VSP_STOP_REASON_WWATCHPOINT;
+    return VSP_STOP_REASON_UNKNOWN;
+}
+
+string stop_reason_str(const stop_reason& reason) {
+    switch (reason.reason) {
+    case VSP_STOP_REASON_USER:
+        return "user";
+    case VSP_STOP_REASON_STEP_COMPLETE:
+        return "target";
+        break;
+    case VSP_STOP_REASON_BREAKPOINT:
+        return "breakpoint";
+    case VSP_STOP_REASON_RWATCHPOINT:
+        return "rwatchpoint";
+    case VSP_STOP_REASON_WWATCHPOINT:
+        return "wwatchpoint";
+    case VSP_STOP_REASON_UNKNOWN:
+    default:
+        return "<unknown>";
+    }
+}
+
+ostream& operator<<(ostream& out, const stop_reason& reason) {
+    return out << stop_reason_str(reason);
 }
 
 session::session(const string& host, u16 port):
@@ -116,82 +151,83 @@ void session::update_reason(const string& reason) {
     if (reason.empty())
         return;
 
-    istringstream ss(reason);
-    stop_reason newreason;
+    auto args = split(reason, ':');
 
-    string type;
-    getline(ss, type, ':');
-    newreason.reason = (type == "user")         ? VSP_STOP_REASON_USER
-                       : (type == "breakpoint") ? VSP_STOP_REASON_BREAKPOINT
-                       : (type == "target")     ? VSP_STOP_REASON_STEP_COMPLETE
-                       : (type == "rwatchpoint") ? VSP_STOP_REASON_RWATCHPOINT
-                       : (type == "wwatchpoint") ? VSP_STOP_REASON_WWATCHPOINT
-                                                 : VSP_STOP_REASON_COUNT;
+    if (args.size() < 1)
+        throw "session: simulation pause reason unknown";
+
+    stop_reason newreason;
+    newreason.reason = stop_reason_from_string(args[0]);
 
     switch (newreason.reason) {
     case VSP_STOP_REASON_USER: {
         // nothing to do
-    } break;
+        break;
+    }
     case VSP_STOP_REASON_BREAKPOINT: {
-        string id;
-        getline(ss, id, ':');
-        newreason.breakpoint.id = stoll(id, 0, 10);
+        if (args.size() != 3) {
+            throw mkstr(
+                "breakpoint: pause reason takes 2 arguments"
+                ", %li where given (%s)",
+                args.size(), reason.c_str());
+        }
 
-        string time;
-        getline(ss, time, '\n');
-        newreason.step_complete.time = stoll(time, 0, 10);
-    } break;
+        newreason.breakpoint.id = stoll(args[1], 0, 10);
+        newreason.step_complete.time = stoll(args[2], 0, 10);
+        break;
+    }
     case VSP_STOP_REASON_STEP_COMPLETE: {
-        string target;
-        getline(ss, target, ':');
-        newreason.step_complete.tgt = find_target(target);
+        if (args.size() != 3) {
+            throw mkstr(
+                "step complete: pause reason takes 2 arguments"
+                ", %li where given (%s)",
+                args.size(), reason.c_str());
+        }
 
-        string time;
-        getline(ss, time, '\n');
-        newreason.step_complete.time = stoll(time, 0, 10);
-    } break;
+        newreason.step_complete.tgt = find_target(args[1]);
+        newreason.step_complete.time = stoll(args[2], 0, 10);
+        break;
+    }
     case VSP_STOP_REASON_RWATCHPOINT: {
-        string id;
-        getline(ss, id, ':');
-        newreason.rwatchpoint.id = stoll(id, 0, 10);
+        if (args.size() != 5) {
+            throw mkstr(
+                "rwatchpoint: pause reason takes 4 arguments"
+                ", %li where given (%s)",
+                args.size(), reason.c_str());
+        }
 
-        string addr;
-        getline(ss, addr, ':');
-        newreason.rwatchpoint.addr = stoll(addr, 0, 16);
-
-        string size;
-        getline(ss, size, ':');
-        newreason.rwatchpoint.addr = stoll(size, 0, 10);
-
-        string time;
-        getline(ss, time, '\n');
-        newreason.rwatchpoint.time = stoll(time, 0, 10);
-    } break;
+        newreason.rwatchpoint.id = stoll(args[1], 0, 10);
+        newreason.rwatchpoint.addr = stoll(args[2], 0, 16);
+        newreason.rwatchpoint.addr = stoll(args[3], 0, 10);
+        newreason.rwatchpoint.time = stoll(args[4], 0, 10);
+        break;
+    }
     case VSP_STOP_REASON_WWATCHPOINT: {
-        string id;
-        getline(ss, id, ':');
-        newreason.wwatchpoint.id = stoll(id, 0, 10);
+        if (args.size() != 5) {
+            throw mkstr(
+                "step complete: pause reason takes 4 arguments"
+                ", %li where given (%s)",
+                args.size(), reason.c_str());
+        }
 
-        string addr;
-        getline(ss, addr, ':');
-        newreason.wwatchpoint.addr = stoll(addr, 0, 16);
+        newreason.wwatchpoint.id = stoll(args[1], 0, 10);
+        newreason.wwatchpoint.addr = stoll(args[2], 0, 16);
 
-        string data;
-        getline(ss, data, ':');
-
-        if (data.size() > stop_reason::DATA_SIZE)
+        string data = args[3];
+        if (data.size() > stop_reason::DATA_SIZE) {
             mwr::log_error(
                 "wwatchpoint: written %lu bytes (>%lu), data dropped",
                 data.size(), stop_reason::DATA_SIZE);
+        }
 
-        strhex(newreason.wwatchpoint.data, data);
+        strhex(newreason.wwatchpoint.data, stop_reason::DATA_SIZE, data);
 
-        string time;
-        getline(ss, time, '\n');
-        newreason.wwatchpoint.time = stoll(time, 0, 10);
-
-    } break;
+        newreason.wwatchpoint.time = stoll(args[4], 0, 10);
+        break;
+    }
+    case VSP_STOP_REASON_UNKNOWN:
     default:
+        throw "session: simulation pause reason unknown";
         break;
     }
     m_reason = newreason;
@@ -265,10 +301,6 @@ unsigned long long session::time_ns() {
 unsigned long long session::cycle() {
     update_status();
     return m_cycle;
-}
-
-const stop_reason& session::reason() const {
-    return m_reason;
 }
 
 void session::connect() {

@@ -19,6 +19,7 @@
 #include "vsp/target.h"
 
 enum stop_reason_t {
+    VSP_STOP_REASON_UNKNOWN = 0,
     VSP_STOP_REASON_USER,
     VSP_STOP_REASON_BREAKPOINT,
     VSP_STOP_REASON_STEP_COMPLETE,
@@ -54,28 +55,10 @@ struct stop_reason {
             u64 time;
         } wwatchpoint;
     };
-
-    string str() const {
-        switch (reason) {
-        case VSP_STOP_REASON_USER:
-            return "user";
-        case VSP_STOP_REASON_STEP_COMPLETE:
-            return "target";
-            break;
-        case VSP_STOP_REASON_BREAKPOINT:
-            return "breakpoint";
-        case VSP_STOP_REASON_RWATCHPOINT:
-            return "rwatchpoint";
-        case VSP_STOP_REASON_WWATCHPOINT:
-            return "wwatchpoint";
-        default:
-            return "<unknown>";
-        }
-        return "<unknown>";
-    }
 };
 
-string reason_str(const stop_reason& type);
+string stop_reason_str(const stop_reason& reason);
+ostream& operator<<(ostream& out, const stop_reason& reason);
 
 class session
 {
@@ -113,7 +96,7 @@ public:
     const string& vcml_version() const;
     unsigned long long time_ns();
     unsigned long long cycle();
-    const stop_reason& reason() const;
+    const stop_reason& reason() const { return m_reason; }
 
     bool is_connected() const;
     void connect();
