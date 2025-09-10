@@ -32,7 +32,7 @@ namespace vsp {
 
 struct stop_reason {
     static constexpr size_t DATA_SIZE = 16;
-    stop_reason_t reason = VSP_STOP_REASON_COUNT;
+    stop_reason_t reason;
     union {
         struct {
             u64 id;

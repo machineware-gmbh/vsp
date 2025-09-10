@@ -14,10 +14,7 @@
 #include "vsp/module.h"
 
 #include <pugixml.hpp>
-#include <sstream>
 
-using std::istringstream;
-using std::getline;
 using std::min;
 using std::stoi;
 using std::stoll;
@@ -71,7 +68,6 @@ string stop_reason_str(const stop_reason& reason) {
         return "user";
     case VSP_STOP_REASON_STEP_COMPLETE:
         return "target";
-        break;
     case VSP_STOP_REASON_BREAKPOINT:
         return "breakpoint";
     case VSP_STOP_REASON_RWATCHPOINT:
@@ -153,47 +149,44 @@ void session::update_reason(const string& reason) {
 
     auto args = split(reason, ':');
 
-    if (args.size() < 1)
-        throw "session: simulation pause reason unknown";
-
     stop_reason newreason;
-    newreason.reason = stop_reason_from_string(args[0]);
+    if (args.size() < 1)
+        newreason.reason = VSP_STOP_REASON_UNKNOWN;
+    else
+        newreason.reason = stop_reason_from_string(args[0]);
 
     switch (newreason.reason) {
     case VSP_STOP_REASON_USER: {
         // nothing to do
         break;
     }
+
     case VSP_STOP_REASON_BREAKPOINT: {
         if (args.size() != 3) {
-            throw mkstr(
-                "breakpoint: pause reason takes 2 arguments"
-                ", %li where given (%s)",
-                args.size(), reason.c_str());
+            newreason.reason = VSP_STOP_REASON_UNKNOWN;
+            break;
         }
 
         newreason.breakpoint.id = stoll(args[1], 0, 10);
         newreason.step_complete.time = stoll(args[2], 0, 10);
         break;
     }
+
     case VSP_STOP_REASON_STEP_COMPLETE: {
         if (args.size() != 3) {
-            throw mkstr(
-                "step complete: pause reason takes 2 arguments"
-                ", %li where given (%s)",
-                args.size(), reason.c_str());
+            newreason.reason = VSP_STOP_REASON_UNKNOWN;
+            break;
         }
 
         newreason.step_complete.tgt = find_target(args[1]);
         newreason.step_complete.time = stoll(args[2], 0, 10);
         break;
     }
+
     case VSP_STOP_REASON_RWATCHPOINT: {
         if (args.size() != 5) {
-            throw mkstr(
-                "rwatchpoint: pause reason takes 4 arguments"
-                ", %li where given (%s)",
-                args.size(), reason.c_str());
+            newreason.reason = VSP_STOP_REASON_UNKNOWN;
+            break;
         }
 
         newreason.rwatchpoint.id = stoll(args[1], 0, 10);
@@ -202,12 +195,11 @@ void session::update_reason(const string& reason) {
         newreason.rwatchpoint.time = stoll(args[4], 0, 10);
         break;
     }
+
     case VSP_STOP_REASON_WWATCHPOINT: {
         if (args.size() != 5) {
-            throw mkstr(
-                "step complete: pause reason takes 4 arguments"
-                ", %li where given (%s)",
-                args.size(), reason.c_str());
+            newreason.reason = VSP_STOP_REASON_UNKNOWN;
+            break;
         }
 
         newreason.wwatchpoint.id = stoll(args[1], 0, 10);
@@ -225,11 +217,13 @@ void session::update_reason(const string& reason) {
         newreason.wwatchpoint.time = stoll(args[4], 0, 10);
         break;
     }
+
     case VSP_STOP_REASON_UNKNOWN:
     default:
-        throw "session: simulation pause reason unknown";
+        newreason.reason = VSP_STOP_REASON_UNKNOWN;
         break;
     }
+
     m_reason = newreason;
 }
 
