@@ -15,9 +15,74 @@
 
 #include <pugixml.hpp>
 
+using std::min;
+using std::stoi;
+using std::stoll;
+
 namespace vsp {
 
 list<shared_ptr<session>> session::local_sessions;
+
+// converts a string of bytes to a vector of bytes
+// "ddccbbaa" -> { aa, bb, cc, dd }
+static void strhex(u8* buffer, size_t buflen, const string& bytes) {
+    if (!buffer)
+        return;
+
+    memset(buffer, 0, buflen);
+
+    if (bytes.empty())
+        return;
+
+    size_t src_len = min(bytes.size(), buflen);
+    size_t src_off = (bytes.size() > buflen) ? bytes.size() - buflen : 0;
+
+    size_t src_idx = src_len - src_off, dst_idx = 0;
+    size_t stride = (src_len & 1) ? 1 : 2;
+
+    while (src_idx != 0) {
+        src_idx -= stride;
+        string chunk = bytes.substr(src_idx, stride);
+        buffer[dst_idx++] = (u8)stoi(chunk, 0, 16);
+        stride = 2;
+    }
+}
+
+static stop_reason_t stop_reason_from_string(const string& s) {
+    if (s == "user")
+        return VSP_STOP_REASON_USER;
+    if (s == "breakpoint")
+        return VSP_STOP_REASON_BREAKPOINT;
+    if (s == "target")
+        return VSP_STOP_REASON_STEP_COMPLETE;
+    if (s == "rwatchpoint")
+        return VSP_STOP_REASON_RWATCHPOINT;
+    if (s == "wwatchpoint")
+        return VSP_STOP_REASON_WWATCHPOINT;
+    return VSP_STOP_REASON_UNKNOWN;
+}
+
+string stop_reason_str(const stop_reason& reason) {
+    switch (reason.reason) {
+    case VSP_STOP_REASON_USER:
+        return "user";
+    case VSP_STOP_REASON_STEP_COMPLETE:
+        return "target";
+    case VSP_STOP_REASON_BREAKPOINT:
+        return "breakpoint";
+    case VSP_STOP_REASON_RWATCHPOINT:
+        return "rwatchpoint";
+    case VSP_STOP_REASON_WWATCHPOINT:
+        return "wwatchpoint";
+    case VSP_STOP_REASON_UNKNOWN:
+    default:
+        return "<unknown>";
+    }
+}
+
+ostream& operator<<(ostream& out, const stop_reason& reason) {
+    return out << stop_reason_str(reason);
+}
 
 session::session(const string& host, u16 port):
     m_conn(host, port),
@@ -69,13 +134,97 @@ bool session::update_status() {
         m_running = true;
     } else {
         m_running = false;
-        m_reason = resp->at(1).substr(8);
+        update_reason(resp->at(1).substr(8));
     }
 
     m_time_ns = stoull(resp->at(2));
     m_cycle = stoull(resp->at(3));
 
     return true;
+}
+
+void session::update_reason(const string& reason) {
+    if (reason.empty())
+        return;
+
+    auto args = split(reason, ':');
+
+    stop_reason newreason;
+    if (args.size() < 1)
+        newreason.reason = VSP_STOP_REASON_UNKNOWN;
+    else
+        newreason.reason = stop_reason_from_string(args[0]);
+
+    switch (newreason.reason) {
+    case VSP_STOP_REASON_USER: {
+        // nothing to do
+        break;
+    }
+
+    case VSP_STOP_REASON_BREAKPOINT: {
+        if (args.size() != 3) {
+            newreason.reason = VSP_STOP_REASON_UNKNOWN;
+            break;
+        }
+
+        newreason.breakpoint.id = stoll(args[1], 0, 10);
+        newreason.step_complete.time = stoll(args[2], 0, 10);
+        break;
+    }
+
+    case VSP_STOP_REASON_STEP_COMPLETE: {
+        if (args.size() != 3) {
+            newreason.reason = VSP_STOP_REASON_UNKNOWN;
+            break;
+        }
+
+        newreason.step_complete.tgt = find_target(args[1]);
+        newreason.step_complete.time = stoll(args[2], 0, 10);
+        break;
+    }
+
+    case VSP_STOP_REASON_RWATCHPOINT: {
+        if (args.size() != 5) {
+            newreason.reason = VSP_STOP_REASON_UNKNOWN;
+            break;
+        }
+
+        newreason.rwatchpoint.id = stoll(args[1], 0, 10);
+        newreason.rwatchpoint.addr = stoll(args[2], 0, 16);
+        newreason.rwatchpoint.addr = stoll(args[3], 0, 10);
+        newreason.rwatchpoint.time = stoll(args[4], 0, 10);
+        break;
+    }
+
+    case VSP_STOP_REASON_WWATCHPOINT: {
+        if (args.size() != 5) {
+            newreason.reason = VSP_STOP_REASON_UNKNOWN;
+            break;
+        }
+
+        newreason.wwatchpoint.id = stoll(args[1], 0, 10);
+        newreason.wwatchpoint.addr = stoll(args[2], 0, 16);
+
+        string data = args[3];
+        if (data.size() > stop_reason::DATA_SIZE) {
+            mwr::log_error(
+                "wwatchpoint: written %lu bytes (>%lu), data dropped",
+                data.size(), stop_reason::DATA_SIZE);
+        }
+
+        strhex(newreason.wwatchpoint.data, stop_reason::DATA_SIZE, data);
+
+        newreason.wwatchpoint.time = stoll(args[4], 0, 10);
+        break;
+    }
+
+    case VSP_STOP_REASON_UNKNOWN:
+    default:
+        newreason.reason = VSP_STOP_REASON_UNKNOWN;
+        break;
+    }
+
+    m_reason = newreason;
 }
 
 module* xml_parse_modules(connection& conn, const pugi::xml_node& node,
@@ -146,10 +295,6 @@ unsigned long long session::time_ns() {
 unsigned long long session::cycle() {
     update_status();
     return m_cycle;
-}
-
-const string& session::reason() const {
-    return m_reason;
 }
 
 void session::connect() {

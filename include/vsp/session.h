@@ -18,7 +18,47 @@
 #include "vsp/module.h"
 #include "vsp/target.h"
 
+enum stop_reason_t {
+    VSP_STOP_REASON_UNKNOWN = 0,
+    VSP_STOP_REASON_USER,
+    VSP_STOP_REASON_BREAKPOINT,
+    VSP_STOP_REASON_STEP_COMPLETE,
+    VSP_STOP_REASON_RWATCHPOINT,
+    VSP_STOP_REASON_WWATCHPOINT,
+    VSP_STOP_REASON_COUNT
+};
+
 namespace vsp {
+
+struct stop_reason {
+    static constexpr size_t DATA_SIZE = 16;
+    stop_reason_t reason;
+    union {
+        struct {
+            u64 id;
+            u64 time;
+        } breakpoint;
+        struct {
+            target* tgt;
+            u64 time;
+        } step_complete;
+        struct {
+            u64 id;
+            u64 addr;
+            u64 size;
+            u64 time;
+        } rwatchpoint;
+        struct {
+            u64 id;
+            u64 addr;
+            u8 data[DATA_SIZE];
+            u64 time;
+        } wwatchpoint;
+    };
+};
+
+string stop_reason_str(const stop_reason& reason);
+ostream& operator<<(ostream& out, const stop_reason& reason);
 
 class session
 {
@@ -27,7 +67,7 @@ private:
     string m_sysc_version;
     string m_vcml_version;
     bool m_running;
-    string m_reason;
+    stop_reason m_reason;
     unsigned long long m_time_ns;
     unsigned long long m_cycle;
     int m_quantum_ns;
@@ -41,6 +81,7 @@ private:
     bool update_quantum();
     bool update_status();
     bool update_modules();
+    void update_reason(const string& reason);
 
 public:
     explicit session(const string& host, u16 port);
@@ -55,7 +96,7 @@ public:
     const string& vcml_version() const;
     unsigned long long time_ns();
     unsigned long long cycle();
-    const string& reason() const;
+    const stop_reason& reason() const { return m_reason; }
 
     bool is_connected() const;
     void connect();
