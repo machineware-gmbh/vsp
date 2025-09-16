@@ -311,13 +311,13 @@ void session::connect() {
         return;
 
     update_version();
-    update_quantum();
     update_status();
 
     stop();
     while (running())
         mwr::cpu_yield();
 
+    update_quantum();
     update_modules();
 }
 
