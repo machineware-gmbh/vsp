@@ -134,8 +134,9 @@ bool connection::send(const string& data) {
                 return true;
         }
     } catch (mwr::report&) {
-        return false;
     }
+
+    disconnect();
     return false;
 }
 

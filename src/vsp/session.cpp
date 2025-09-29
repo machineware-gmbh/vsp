@@ -127,6 +127,11 @@ bool session::update_quantum() {
 bool session::update_status() {
     optional<vector<string>> resp = m_conn.command("status");
 
+    if (!is_connected()) {
+        m_running = false;
+        return false;
+    }
+
     if (!connection::check_response(resp, 4))
         return false;
 
