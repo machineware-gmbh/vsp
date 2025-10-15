@@ -43,7 +43,7 @@ cd <build_dir> # change directory to the build dir
 cmake \
     -DCMAKE_BUILD_TYPE=DEBUG \
     -DCMAKE_INSTALL_PREFIX=<install_dir> \
-    -DVSP_BUILD_CLI=ON \
+    -DVSP_CLI=ON \
     <project_dir> # configure the project
 cmake --build <build_dir> -- -j $(nproc) # build the project
 cmake --build <build_dir> -t install # install the project
