@@ -1,45 +1,44 @@
-#include <array>
 #include <vcml.h>
 
 #include "simple_cpu.h"
 
 class simple_system : public vcml::system
 {
-    static constexpr size_t mem_size = 0x7fff;
+    static constexpr size_t m_memsize = 0x7fff;
 
 public:
     simple_system(const sc_core::sc_module_name& nm):
         vcml::system(nm),
-        cpu(),
-        mem_range_("memory_range", vcml::range(0, mem_size)),
-        mem_("memory", mem_size),
-        bus_("bus"),
-        clock_("clock", 1 * vcml::GHz),
-        reset_("reset") {
-        bus_.bind(cpu.data);
-        bus_.bind(cpu.insn);
-        bus_.bind(mem_.in, mem_range_);
+        m_cpu("m_cpu"),
+        m_bus("bus"),
+        m_clock("clock", 1 * vcml::GHz),
+        m_mem("memory", m_memsize),
+        m_reset("reset"),
+        m_memrange("memory_range", vcml::range(0, m_memsize)) {
+        m_bus.bind(m_cpu.data);
+        m_bus.bind(m_cpu.insn);
+        m_bus.bind(m_mem.in, m_memrange);
 
-        clock_.clk.bind(bus_.clk);
-        clock_.clk.bind(cpu.clk);
-        clock_.clk.bind(mem_.clk);
+        m_clock.clk.bind(m_bus.clk);
+        m_clock.clk.bind(m_cpu.clk);
+        m_clock.clk.bind(m_mem.clk);
 
-        reset_.rst.bind(bus_.rst);
-        reset_.rst.bind(cpu.rst);
-        reset_.rst.bind(mem_.rst);
+        m_reset.rst.bind(m_bus.rst);
+        m_reset.rst.bind(m_cpu.rst);
+        m_reset.rst.bind(m_mem.rst);
     }
 
     virtual int run() override { return vcml::system::run(); }
 
-public:
-    simple_cpu cpu;
+private:
+    simple_cpu m_cpu;
 
-    vcml::generic::bus bus_;
-    vcml::generic::clock clock_;
-    vcml::generic::memory mem_;
-    vcml::generic::reset reset_;
+    vcml::generic::bus m_bus;
+    vcml::generic::clock m_clock;
+    vcml::generic::memory m_mem;
+    vcml::generic::reset m_reset;
 
-    vcml::property<vcml::range> mem_range_;
+    vcml::property<vcml::range> m_memrange;
 };
 
 int sc_main(int argc, char** argv) {

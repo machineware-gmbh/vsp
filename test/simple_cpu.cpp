@@ -1,23 +1,20 @@
 #include "simple_cpu.h"
 
-#include <string>
-
-static std::string reg_name(size_t ind) {
-    static std::string names[33] = {
-        "zero", "ra", "sp", "gp", "tp",  "t0",  "t1", "t2", "s0", "s1", "a0",
-        "a1",   "a2", "a3", "a4", "a5",  "a6",  "a7", "s2", "s3", "s4", "s5",
-        "s6",   "s7", "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6", "pc"
-    };
+static string reg_name(size_t ind) {
+    static string names[33] = { "zero", "ra", "sp", "gp", "tp", "t0",  "t1",
+                                "t2",   "s0", "s1", "a0", "a1", "a2",  "a3",
+                                "a4",   "a5", "a6", "a7", "s2", "s3",  "s4",
+                                "s5",   "s6", "s7", "s8", "s9", "s10", "s11",
+                                "t3",   "t4", "t5", "t6", "pc" };
 
     return names[ind];
 }
 
-simple_cpu::simple_cpu(): vcml::processor("cpu", "riscv") {
+simple_cpu::simple_cpu(const char* name): vcml::processor(name, "riscv") {
     set_little_endian();
 
-    // See: vcml/debugging/gdbarch.*
     define_cpureg_r(0, reg_name(0), sizeof(u32));
-    for (int i = 1; i < reg_file.size(); ++i)
+    for (size_t i = 1; i < reg_file.size(); ++i)
         define_cpureg_rw(i, reg_name(i), sizeof(u32));
     define_cpureg_rw(32, "pc", sizeof(u32));
 
@@ -25,7 +22,7 @@ simple_cpu::simple_cpu(): vcml::processor("cpu", "riscv") {
 }
 
 u64 simple_cpu::cycle_count() const {
-    return cycle_counter;
+    return m_num_cycles;
 };
 
 u64 simple_cpu::program_counter() {
@@ -39,63 +36,61 @@ u64 simple_cpu::stack_pointer() {
 void simple_cpu::reset() {
     pc = 0;
 
-    for (auto& reg : reg_file) {
+    for (auto& reg : reg_file)
         reg = 0;
-    }
 }
 
 void simple_cpu::simulate(size_t cycles) {
-    for (int i = 0; i < cycles; ++i) {
-        if (std::find(breakpoints_.begin(), breakpoints_.end(), pc) !=
-            breakpoints_.end()) {
+    for (size_t i = 0; i < cycles; i++) {
+        if (std::find(m_breakpoints.begin(), m_breakpoints.end(), pc) !=
+            m_breakpoints.end()) {
             notify_breakpoint_hit(pc, local_time_stamp());
             return;
         }
 
-        u32 inst_data = mem_read(pc);
+        exec_inst(mem_read(pc));
 
-        exec_inst(inst_data);
-
-        retired_instructions++;
-        cycle_counter++;
+        m_num_retired_insts++;
+        m_num_cycles++;
     }
+
     wait_clock_cycles(cycles);
 };
 
-bool simple_cpu::insert_breakpoint(vcml::u64 addr) {
-    if (std::find(breakpoints_.begin(), breakpoints_.end(), addr) ==
-        breakpoints_.end())
-        breakpoints_.push_back(addr);
+bool simple_cpu::insert_breakpoint(u64 addr) {
+    if (std::find(m_breakpoints.begin(), m_breakpoints.end(), addr) ==
+        m_breakpoints.end())
+        m_breakpoints.push_back(addr);
     return true;
 }
 
-bool simple_cpu::remove_breakpoint(vcml::u64 addr) {
-    breakpoints_.erase(
-        std::remove(breakpoints_.begin(), breakpoints_.end(), addr),
-        breakpoints_.end());
+bool simple_cpu::remove_breakpoint(u64 addr) {
+    m_breakpoints.erase(
+        std::remove(m_breakpoints.begin(), m_breakpoints.end(), addr),
+        m_breakpoints.end());
     return true;
 }
 
 bool simple_cpu::insert_watchpoint(const vcml::range& addr,
                                    vcml::vcml_access prot) {
-    for (auto& wp : watchpoints_) {
+    for (auto& wp : m_watchpoints) {
         if (std::get<0>(wp) == addr && std::get<1>(wp) == prot)
             return false;
     }
 
-    watchpoints_.emplace_back(addr, prot);
+    m_watchpoints.emplace_back(addr, prot);
     return true;
 }
 
 bool simple_cpu::remove_watchpoint(const vcml::range& addr,
                                    vcml::vcml_access prot) {
-    watchpoints_.erase(
+    m_watchpoints.erase(
         std::remove_if(
-            watchpoints_.begin(), watchpoints_.end(),
+            m_watchpoints.begin(), m_watchpoints.end(),
             [&](const std::tuple<vcml::range, vcml::vcml_access>& wp) {
                 return std::get<0>(wp) == addr && std::get<1>(wp) == prot;
             }),
-        watchpoints_.end());
+        m_watchpoints.end());
     return true;
 }
 
@@ -130,18 +125,16 @@ void simple_cpu::exec_inst(u32 inst) {
     //  - store (0x10): [23:16]=base, [15:8]=src, [7:0]=offset8 (signed)
     //  - load  (0x11): [23:16]=base, [15:8]=dst, [7:0]=offset8 (signed)
     //  - rjump (0x20): [23:0]=signed24 relative offset
-    //  - default: nop (advance PC)
-    const u8 opcode = (inst >> 24) & 0xff;
-    auto clamp_reg = [](u32 idx) -> size_t {
-        return static_cast<size_t>(idx & 0x1f);
-    };
+    //  - default: nop (advance pc)
+
+    u8 opcode = (inst >> 24) & 0xff;
 
     switch (opcode) {
     case 0x10: { // store
         u8 base = (inst >> 16) & 0x1f;
         u8 src = (inst >> 8) & 0x1f;
-        i8 off = static_cast<i8>(inst & 0xff);
-        u64 addr = static_cast<u64>(reg_file[base]) + static_cast<i64>(off);
+        i8 off = (i8)(inst & 0xff);
+        u64 addr = (u64)reg_file[base] + (i64)off;
         u32 data = reg_file[src];
         mem_write(addr, data);
         pc += inst_size;
@@ -151,9 +144,9 @@ void simple_cpu::exec_inst(u32 inst) {
     case 0x11: { // load
         u8 base = (inst >> 16) & 0x1f;
         u8 dst = (inst >> 8) & 0x1f;
-        i8 off = static_cast<i8>(inst & 0xff);
-        u64 addr = static_cast<u64>(reg_file[base]) + static_cast<i64>(off);
-        u32 val = mem_read(static_cast<u32>(addr), true);
+        i8 off = (i8)(inst & 0xff);
+        u64 addr = (u64)(reg_file[base]) + (i64)(off);
+        u32 val = mem_read(addr, true);
         reg_file[dst] = val;
         pc += inst_size;
         break;
@@ -163,7 +156,7 @@ void simple_cpu::exec_inst(u32 inst) {
         i32 rel = inst & 0x00ffffff;
         if (rel & 0x00800000)
             rel |= 0xff000000;
-        pc = static_cast<u32>(static_cast<i32>(pc) + rel);
+        pc = (u32)((i32)pc + rel);
         break;
     }
 
@@ -179,11 +172,10 @@ u32 simple_cpu::mem_read(u32 adr, bool trigger_watchpoints) {
 
     if (rs != tlm::TLM_OK_RESPONSE) {
         log_bus_error(insn, vcml::VCML_ACCESS_READ, rs, adr, sizeof(u32));
-        exit(1);
     }
 
     if (trigger_watchpoints) {
-        for (auto& wp : watchpoints_) {
+        for (auto& wp : m_watchpoints) {
             if (std::get<0>(wp).includes(adr) &&
                 std::get<1>(wp) == vcml::vcml_access::VCML_ACCESS_READ) {
                 notify_watchpoint_read(std::get<0>(wp), local_time_stamp());
@@ -200,10 +192,9 @@ void simple_cpu::mem_write(u32 adr, u32 dat) {
 
     if (rs != tlm::TLM_OK_RESPONSE) {
         log_bus_error(insn, vcml::VCML_ACCESS_WRITE, rs, adr, sizeof(u32));
-        exit(1);
     }
 
-    for (auto& wp : watchpoints_) {
+    for (auto& wp : m_watchpoints) {
         if (std::get<0>(wp).includes(adr) &&
             std::get<1>(wp) == vcml::vcml_access::VCML_ACCESS_WRITE) {
             notify_watchpoint_write(std::get<0>(wp), d, local_time_stamp());

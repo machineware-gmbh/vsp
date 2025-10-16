@@ -10,8 +10,6 @@
 
 #include "testing.h"
 
-#include <future>
-
 using namespace vsp;
 
 using testing::AllOf;
@@ -25,7 +23,7 @@ protected:
     session_test(): sess("localhost", 4444) {
         subp.run("./simple_system");
         while (!sess.is_connected()) {
-            mwr::usleep(10000);
+            mwr::usleep(5000);
             sess.connect();
         }
     }
@@ -41,8 +39,8 @@ protected:
         }
     }
 
-    mwr::subprocess subp;
     session sess;
+    mwr::subprocess subp;
 };
 
 TEST_F(session_test, connect) {
@@ -55,9 +53,11 @@ TEST_F(session_test, connect) {
 TEST_F(session_test, versions) {
     EXPECT_NE(sess.sysc_version().size(), 0);
     EXPECT_NE(sess.vcml_version().size(), 0);
+}
+
+TEST_F(session_test, time_and_cycles) {
     EXPECT_EQ(sess.time_ns(), 0);
     EXPECT_EQ(sess.cycle(), 1);
-    sess.disconnect();
 }
 
 TEST_F(session_test, find_target) {
@@ -83,15 +83,15 @@ TEST_F(session_test, register_read) {
     auto& targets = sess.targets();
     target& t = targets.front();
 
-    static std::string reg_names[33] = {
-        "zero", "ra", "sp", "gp", "tp",  "t0",  "t1", "t2", "s0", "s1", "a0",
-        "a1",   "a2", "a3", "a4", "a5",  "a6",  "a7", "s2", "s3", "s4", "s5",
-        "s6",   "s7", "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6", "pc"
-    };
+    const char* reg_names[33] = { "zero", "ra", "sp", "gp", "tp", "t0",  "t1",
+                                  "t2",   "s0", "s1", "a0", "a1", "a2",  "a3",
+                                  "a4",   "a5", "a6", "a7", "s2", "s3",  "s4",
+                                  "s5",   "s6", "s7", "s8", "s9", "s10", "s11",
+                                  "t3",   "t4", "t5", "t6", "pc" };
 
     size_t i = 0;
     for (auto& reg : t.regs()) {
-        EXPECT_STREQ(reg.name(), reg_names[i].c_str());
+        EXPECT_STREQ(reg.name(), reg_names[i]);
 
         vector<u8> ret;
         EXPECT_TRUE(reg.get_value(ret));
@@ -133,17 +133,16 @@ TEST_F(session_test, register_write) {
 TEST_F(session_test, memory_read_write) {
     auto& targets = sess.targets();
     target& t = targets.front();
-    constexpr u32 addr_in_bound = 0x42;
-    constexpr u32 addr_oo_bound = 0x8000;
-
     vector<u8> data{ 1, 2, 3, 4 };
     vector<u8> ret;
 
     // write and read in bounds
+    constexpr u32 addr_in_bound = 0x42;
     EXPECT_TRUE(t.write_vmem(addr_in_bound, data));
     EXPECT_THAT(t.read_vmem(addr_in_bound, 4), ElementsAre(1, 2, 3, 4));
 
     // write and read out of bounds
+    constexpr u32 addr_oo_bound = 0x8000;
     EXPECT_TRUE(t.write_vmem(addr_oo_bound, data));
     EXPECT_THAT(t.read_vmem(addr_oo_bound, 4), ElementsAre(0, 0, 0, 0));
 }
@@ -230,7 +229,7 @@ TEST_F(session_test, stepping) {
 
     sess.step(3000, true);
     EXPECT_EQ(sess.reason().reason,
-              VSP_STOP_REASON_UNKNOWN); // TODO: Really like this?
+              VSP_STOP_REASON_UNKNOWN); // TODO: really unknown?
 }
 
 TEST_F(session_test, stop) {
