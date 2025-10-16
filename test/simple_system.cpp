@@ -9,7 +9,7 @@ class simple_system : public vcml::system
 public:
     simple_system(const sc_core::sc_module_name& nm):
         vcml::system(nm),
-        m_cpu("m_cpu"),
+        m_cpu("cpu"),
         m_bus("bus"),
         m_clock("clock", 1 * vcml::GHz),
         m_mem("memory", m_memsize),
