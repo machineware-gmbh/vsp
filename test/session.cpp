@@ -13,6 +13,7 @@
 using namespace vsp;
 
 using testing::AllOf;
+using testing::ContainsRegex;
 using testing::Each;
 using testing::ElementsAre;
 using testing::SizeIs;
@@ -47,16 +48,36 @@ protected:
     mwr::subprocess subp;
 };
 
-TEST_F(session_test, connect) {
+TEST_F(session_test, connect_and_quit) {
     EXPECT_STREQ(sess.host(), "localhost");
     EXPECT_EQ(sess.port(), 4444);
     EXPECT_GT(strlen(sess.peer()), 0);
     EXPECT_TRUE(sess.is_connected());
+
+    // double connect
+    sess.connect();
+    EXPECT_TRUE(sess.is_connected());
+
+    sess.quit();
+    EXPECT_FALSE(sess.is_connected());
+
+    // double quit
+    sess.quit();
+    EXPECT_FALSE(sess.is_connected());
+}
+
+TEST_F(session_test, dump) {
+    testing::internal::CaptureStdout();
+    sess.dump();
+    string out = testing::internal::GetCapturedStdout();
+    EXPECT_GT(out.size(), 0);
 }
 
 TEST_F(session_test, versions) {
-    EXPECT_NE(sess.sysc_version().size(), 0);
-    EXPECT_NE(sess.vcml_version().size(), 0);
+    const char* sc_regex = "[0-9]+.[0-9]+.[0-9]+";
+    EXPECT_THAT(sess.sysc_version(), ContainsRegex(sc_regex));
+    const char* vcml_regex = "vcml-[0-9]{4}.[0-9]{2}.[0-9]{2}";
+    EXPECT_THAT(sess.vcml_version(), ContainsRegex(vcml_regex));
 }
 
 TEST_F(session_test, time_and_cycles) {
@@ -64,23 +85,48 @@ TEST_F(session_test, time_and_cycles) {
     EXPECT_EQ(sess.cycle(), 1);
 }
 
-TEST_F(session_test, find_target) {
-    auto* target = sess.find_target("system.cpu");
-    EXPECT_NE(target, nullptr);
-}
-
 TEST_F(session_test, targets) {
     auto& targets = sess.targets();
     EXPECT_EQ(targets.size(), 1);
-    target& t = targets.front();
-    EXPECT_STREQ(t.name(), "system.cpu");
+
+    EXPECT_STREQ(targets.front().name(), "system.cpu");
+
+    target* t;
+    t = sess.find_target("system.cpu");
+    EXPECT_NE(t, nullptr);
+
+    t = sess.find_target("undefined-target");
+    EXPECT_EQ(t, nullptr);
 }
 
 TEST_F(session_test, modules) {
-    module* mod = sess.find_module("");
+    module* mod;
+
+    mod = sess.find_module("");
     EXPECT_STREQ(mod->name(), "");
+
     auto& mods = mod->get_modules();
     EXPECT_STREQ(mods.front()->name(), "system");
+
+    mod = sess.find_module("undefined-module");
+    EXPECT_EQ(mod, nullptr);
+}
+
+TEST_F(session_test, command) {
+    module* mod = sess.find_module("");
+    auto* cpu = mod->get_modules().front()->get_modules().front();
+    EXPECT_STREQ(cpu->name(), "cpu");
+
+    command* cmd;
+
+    cmd = cpu->find_command("dump");
+    EXPECT_NE(cmd, nullptr);
+
+    auto dreg = "\\w+:\n  PC \\w+\n  LR \\w+\n  SP \\w+\n  ID \\w+\n\\w+:\n";
+    EXPECT_THAT(cmd->execute(), ContainsRegex(dreg));
+
+    cmd = cpu->find_command("undefined-command");
+    EXPECT_EQ(cmd, nullptr);
 }
 
 TEST_F(session_test, register_read) {
@@ -104,13 +150,11 @@ TEST_F(session_test, register_read) {
         i++;
     }
 
-    // get program counter
     u64 pc;
     t.pc(pc);
     EXPECT_EQ(pc, 0);
 
-    // read non-existing register
-    auto* reg = t.find_reg("non-existing");
+    auto* reg = t.find_reg("undefined-registers");
     EXPECT_EQ(reg, nullptr);
 }
 
@@ -118,7 +162,6 @@ TEST_F(session_test, register_write) {
     auto& targets = sess.targets();
     target& t = targets.front();
 
-    // write into a writable register
     auto* reg = t.find_reg("a5");
     reg->set_value({ 1, 2, 3, 4 });
 
