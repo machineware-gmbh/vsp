@@ -8,6 +8,8 @@
  #                                                                            #
  ##############################################################################
 
+find_github_repo(vcml "machineware-gmbh/vcml")
+
 if (NOT TARGET gtest OR NOT TARGET gmock)
     option(INSTALL_GTEST OFF)
     set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
@@ -43,3 +45,7 @@ macro(new_test test timeout)
 endmacro()
 
 new_test(connection 10)
+new_test(session 10)
+
+add_executable(simple_system simple_system.cpp)
+target_link_libraries(simple_system vcml)

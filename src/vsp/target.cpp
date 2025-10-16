@@ -26,7 +26,7 @@ static string wp_type_str(watchpoint_type type) {
 
 target::target(connection& conn, const string& name):
     m_conn(conn), m_name(name), m_regs() {
-    update_regs();
+    MWR_ERROR_ON(!update_regs(), "failed to retrieve registers");
     vector<u8> data(4, 0);
     m_regs.front().get_value(data);
 }
