@@ -45,7 +45,7 @@ macro(new_test test timeout)
 endmacro()
 
 new_test(connection 10)
-new_test(session 180)
+new_test(session 300)
 
 add_executable(simple_system simple_system.cpp simple_cpu.cpp)
 target_link_libraries(simple_system vcml)

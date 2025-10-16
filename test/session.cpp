@@ -21,7 +21,11 @@ class session_test : public testing::Test
 {
 protected:
     session_test(): sess("localhost", 4444) {
+#ifdef MWR_WINDOWS
+        subp.run("simple_system");
+#else
         subp.run("./simple_system");
+#endif
         while (!sess.is_connected()) {
             mwr::usleep(5000);
             sess.connect();
