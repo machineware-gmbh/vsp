@@ -40,7 +40,7 @@ macro(new_test test timeout)
     target_compile_options(${test} PRIVATE ${MWR_COMPILER_WARN_FLAGS})
     set_target_properties(${test} PROPERTIES CXX_CLANG_TIDY "${VSP_LINTER}")
     add_test(NAME ${test} COMMAND ${test})
-    set_tests_properties(${test} PROPERTIES ENVIRONMENT "{VSP_ENVVAR}")
+    set_tests_properties(${test} PROPERTIES ENVIRONMENT "${VSP_ENVVAR}")
     set_tests_properties(${test} PROPERTIES TIMEOUT ${timeout})
 endmacro()
 
