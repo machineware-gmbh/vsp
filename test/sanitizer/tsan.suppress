@@ -1,1 +1,23 @@
-# nothing to suppress
+# from_value_and_unit is called by most sc_time constructors and always writes
+# 'true' to 'time_resolution_fixed', unsynchronized from other threads
+race:from_value_and_unit
+race:from_value
+
+# `m_delta_count` is increased by crunch and read by other functions (e.g. "sc_delta_count")
+race:sc_core::sc_simcontext::crunch(bool)
+
+# the sc_time copy constructors reports a race on simcontext m_curr_time when
+# we call sc_time_stamp from threads other than the main SystemC thread
+race:sc_core::sc_time::operator=
+race:sc_core::sc_time::from_value_and_unit
+race:sc_core::sc_time::from_value
+race:sc_core::sc_time::sc_time
+
+# the async update list does not lock-protect its internal pending-requests
+# vector when checking if there are any pending requests via vector->size()
+race:sc_core::sc_prim_channel_registry::async_update_list::pending
+race:sc_core::sc_prim_channel_registry::async_update_list::append
+
+# fibers are considered as individual threads, and we call suspend() from the
+# main thread, but sometimes also from vcml processor SC_THREADS
+mutex:vcml::thctl::suspend
