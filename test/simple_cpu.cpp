@@ -114,7 +114,7 @@ bool simple_cpu::write_reg_dbg(size_t regno, const void* buf, size_t len) {
     if (regno < reg_file.size())
         reg_file[regno] = *(u32*)buf;
     else if (regno == 32)
-        reg_file[regno] = pc;
+        pc = *(u32*)buf;
 
     return true;
 }
