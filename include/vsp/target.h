@@ -43,6 +43,7 @@ private:
     list<cpureg> m_regs;
 
     bool update_regs();
+    bool exp_backoff();
 
 public:
     explicit target(connection& conn, const string& name);
@@ -54,7 +55,7 @@ public:
 
     const char* name() const;
 
-    void step(size_t steps = 1);
+    bool step(size_t steps = 1);
     u64 virt_to_phys(u64 va);
 
     optional<breakpoint> insert_breakpoint(u64 addr);

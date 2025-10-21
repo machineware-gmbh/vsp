@@ -49,9 +49,41 @@ const char* target::name() const {
     return m_name.c_str();
 }
 
-void target::step(size_t steps) {
-    for (size_t i = 0; i < steps; ++i)
-        m_conn.command("step," + m_name);
+bool target::exp_backoff() {
+    constexpr unsigned long long max_sleep = 2e6;
+    unsigned long long sleep = 1000;
+
+    while (sleep < max_sleep) {
+        mwr::usleep(sleep);
+        auto resp = m_conn.command("step," + m_name);
+
+        if (connection::check_response(resp, 1))
+            return true;
+
+        const string& err = resp->at(1);
+        if (err.compare("simulation running"))
+            return false;
+
+        sleep *= 2;
+    }
+
+    return false;
+}
+
+bool target::step(size_t steps) {
+    for (size_t i = 0; i < steps; ++i) {
+        auto resp = m_conn.command("step," + m_name);
+
+        if (!connection::check_response(resp, 1)) {
+            const string& err = resp.value().at(1);
+            if (err.compare("simulation running"))
+                return false;
+
+            if (!exp_backoff())
+                return false;
+        }
+    }
+    return true;
 }
 
 u64 target::virt_to_phys(u64 va) {
