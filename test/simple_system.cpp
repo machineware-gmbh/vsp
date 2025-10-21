@@ -29,6 +29,7 @@ public:
     }
 
     virtual int run() override { return vcml::system::run(); }
+    virtual const char* version() const override { return "v1.0"; }
 
 private:
     simple_cpu m_cpu;

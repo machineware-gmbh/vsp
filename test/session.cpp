@@ -101,11 +101,59 @@ TEST_F(session_test, modules) {
     mod = sess.find_module("");
     EXPECT_STREQ(mod->name(), "");
 
-    auto& mods = mod->get_modules();
-    EXPECT_STREQ(mods.front()->name(), "system");
+    auto* system = mod->get_modules().front();
+    EXPECT_STREQ(system->name(), "system");
+    EXPECT_STREQ(system->version(), "v1.0");
+
+    auto* cpu = system->get_modules().front();
+    EXPECT_STREQ(cpu->name(), "cpu");
+    EXPECT_STREQ(cpu->parent()->name(), "system");
+
+    auto& attrs = cpu->get_attritbutes();
+    EXPECT_NE(attrs.size(), 0);
 
     mod = sess.find_module("undefined-module");
     EXPECT_EQ(mod, nullptr);
+}
+
+TEST_F(session_test, attributes) {
+    module* mod = sess.find_module("");
+    auto* cpu = mod->get_modules().front()->get_modules().front();
+    EXPECT_STREQ(cpu->name(), "cpu");
+
+    auto& attrs = cpu->get_attritbutes();
+    EXPECT_NE(attrs.size(), 0);
+
+    attribute* attr;
+    attr = cpu->find_attribute("arch");
+    EXPECT_NE(attr, nullptr);
+    EXPECT_EQ(attr->get_str(), "riscv");
+
+    EXPECT_TRUE(attr->set(string("riscvi")));
+    EXPECT_EQ(attr->get_str(), "riscvi");
+
+    attr = cpu->find_attribute("undefined-attribute");
+    EXPECT_EQ(attr, nullptr);
+}
+
+TEST_F(session_test, attributes_while_running) {
+    module* mod = sess.find_module("");
+    auto* cpu = mod->get_modules().front()->get_modules().front();
+    EXPECT_STREQ(cpu->name(), "cpu");
+
+    auto& attrs = cpu->get_attritbutes();
+    EXPECT_NE(attrs.size(), 0);
+
+    attribute* attr = cpu->find_attribute("arch");
+
+    target* t = sess.find_target("system.cpu");
+    EXPECT_TRUE(t->write_vmem(0x0, { 0x0, 0x00, 0x00, 0x00 }));  // nop
+    EXPECT_TRUE(t->write_vmem(0x4, { 0xfc, 0xff, 0xff, 0x20 })); // back to 0
+
+    sess.run();
+    EXPECT_EQ(attr->get_str(), "<error>");
+    EXPECT_FALSE(attr->set(string("riscvi")));
+    sess.stop();
 }
 
 TEST_F(session_test, command) {
@@ -114,6 +162,9 @@ TEST_F(session_test, command) {
     EXPECT_STREQ(cpu->name(), "cpu");
 
     command* cmd;
+
+    auto& cmds = cpu->get_commands();
+    EXPECT_NE(cmds.size(), 0);
 
     cmd = cpu->find_command("dump");
     EXPECT_NE(cmd, nullptr);
@@ -159,7 +210,7 @@ TEST_F(session_test, register_write) {
     target& t = targets.front();
 
     auto* reg = t.find_reg("a5");
-    reg->set_value({ 1, 2, 3, 4 });
+    EXPECT_TRUE(reg->set_value({ 1, 2, 3, 4 }));
 
     vector<u8> ret;
     EXPECT_TRUE(reg->get_value(ret));
@@ -167,10 +218,21 @@ TEST_F(session_test, register_write) {
 
     // write into a non-writable registers
     reg = t.find_reg("zero");
-    reg->set_value({ 1, 2, 3, 4 });
+    EXPECT_FALSE(reg->set_value({ 1, 2, 3, 4 }));
 
     EXPECT_TRUE(reg->get_value(ret));
     EXPECT_THAT(ret, ElementsAre(0, 0, 0, 0));
+}
+
+TEST_F(session_test, register_size) {
+    auto& targets = sess.targets();
+    target& t = targets.front();
+
+    auto* reg = t.find_reg("a5");
+    EXPECT_EQ(reg->size(), 4);
+
+    reg = t.find_reg("zero");
+    EXPECT_EQ(reg->size(), 4);
 }
 
 TEST_F(session_test, memory_read_write) {
@@ -285,9 +347,7 @@ TEST_F(session_test, stop) {
     target& t = targets.front();
 
     EXPECT_TRUE(t.write_vmem(0x0, { 0x0, 0x00, 0x00, 0x00 }));  // nop
-    EXPECT_TRUE(t.write_vmem(0x4, { 0x0, 0x00, 0x00, 0x00 }));  // nop
-    EXPECT_TRUE(t.write_vmem(0x8, { 0x0, 0x00, 0x00, 0x00 }));  // nop
-    EXPECT_TRUE(t.write_vmem(0xc, { 0xf4, 0xff, 0xff, 0x20 })); // back to 0
+    EXPECT_TRUE(t.write_vmem(0x4, { 0xfc, 0xff, 0xff, 0x20 })); // back to 0
 
     sess.run();
     mwr::usleep(1000);
@@ -295,3 +355,11 @@ TEST_F(session_test, stop) {
 
     EXPECT_EQ(sess.reason().reason, VSP_STOP_REASON_USER);
 }
+
+// TODOs: immediate stop: there seems to be some kind of race condition
+//        failed breakpoint insertion: maybe use some kind of command to toggle
+//        this behavior in the simple system failed watchpoint insertion: maybe
+//        use some kind of command to toggle this behavior in the simple system
+//        read/write watchpoint: maybe use some kind of command to toggle this
+//        behavior in the simple system exponential backoff: maybe use some
+//        kind of command to make the CPU slower?
