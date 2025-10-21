@@ -22,11 +22,7 @@ class session_test : public testing::Test
 {
 protected:
     session_test(): sess("localhost", 4444) {
-#ifdef MWR_WINDOWS
         subp.run("simple_system");
-#else
-        subp.run("./simple_system");
-#endif
         while (!sess.is_connected()) {
             mwr::usleep(5000);
             sess.connect();
@@ -217,18 +213,18 @@ TEST_F(session_test, watchpoint) {
     auto& targets = sess.targets();
     target& t = targets.front();
 
-    auto wp_read = t.insert_watchpoint(0x04, 0x04, WP_READ);
+    auto wp_read = t.insert_watchpoint(0x20, 0x04, WP_READ);
     EXPECT_TRUE(wp_read.has_value());
-    EXPECT_EQ(wp_read.value().base, 0x04);
+    EXPECT_EQ(wp_read.value().base, 0x20);
     EXPECT_EQ(wp_read.value().size, 0x04);
 
-    auto wp_write = t.insert_watchpoint(0x08, 0x04, WP_WRITE);
+    auto wp_write = t.insert_watchpoint(0x24, 0x04, WP_WRITE);
     EXPECT_TRUE(wp_write.has_value());
-    EXPECT_EQ(wp_write.value().base, 0x08);
+    EXPECT_EQ(wp_write.value().base, 0x24);
     EXPECT_EQ(wp_write.value().size, 0x04);
 
-    vector<u8> inst_load{ 0x4, 0x01, 0x00, 0x11 };  // load from address 0x4
-    vector<u8> inst_store{ 0x8, 0x01, 0x00, 0x10 }; // store to address 0x8
+    vector<u8> inst_load{ 0x20, 0x01, 0x00, 0x11 };  // load from address 0x20
+    vector<u8> inst_store{ 0x24, 0x01, 0x00, 0x10 }; // store to address 0x24
     EXPECT_TRUE(t.write_vmem(0x0, inst_load));
     EXPECT_TRUE(t.write_vmem(0x4, inst_store));
 
@@ -238,9 +234,14 @@ TEST_F(session_test, watchpoint) {
 
     sess.run();
     wait_for_target();
-    EXPECT_EQ(sess.reason().reason, VSP_STOP_REASON_WWATCHPOINT);
+    EXPECT_EQ(sess.reason().reason, VSP_STOP_REASON_RWATCHPOINT);
 
     EXPECT_TRUE(t.remove_watchpoint(wp_read.value()));
+
+    sess.run();
+    wait_for_target();
+    EXPECT_EQ(sess.reason().reason, VSP_STOP_REASON_WWATCHPOINT);
+
     EXPECT_TRUE(t.remove_watchpoint(wp_write.value()));
 }
 
@@ -256,9 +257,9 @@ TEST_F(session_test, stepping) {
     target& t = targets.front();
     u64 pc;
 
-    EXPECT_TRUE(t.write_vmem(0x0, { 0x4 }));
-    EXPECT_TRUE(t.write_vmem(0x4, { 0x8 }));
-    EXPECT_TRUE(t.write_vmem(0x8, { 0xb }));
+    EXPECT_TRUE(t.write_vmem(0x0, { 0x0, 0x0, 0x0, 0x0 }));     // nop
+    EXPECT_TRUE(t.write_vmem(0x4, { 0x0, 0x0, 0x0, 0x0 }));     // nop
+    EXPECT_TRUE(t.write_vmem(0x8, { 0x0, 0x0, 0x0, 0x0 }));     // nop
     EXPECT_TRUE(t.write_vmem(0xc, { 0xf4, 0xff, 0xff, 0x20 })); // back to 0
 
     sess.stepi(t);
@@ -274,7 +275,7 @@ TEST_F(session_test, stepping) {
     EXPECT_TRUE(t.pc(pc));
     EXPECT_EQ(pc, 0x0);
 
-    sess.step(3000, true);
+    sess.step(5000, true);
     EXPECT_EQ(sess.reason().reason,
               VSP_STOP_REASON_UNKNOWN); // TODO: really unknown?
 }
@@ -283,12 +284,13 @@ TEST_F(session_test, stop) {
     auto& targets = sess.targets();
     target& t = targets.front();
 
-    EXPECT_TRUE(t.write_vmem(0x0, { 0x4 }));
-    EXPECT_TRUE(t.write_vmem(0x4, { 0x8 }));
-    EXPECT_TRUE(t.write_vmem(0x8, { 0xb }));
+    EXPECT_TRUE(t.write_vmem(0x0, { 0x0, 0x00, 0x00, 0x00 }));  // nop
+    EXPECT_TRUE(t.write_vmem(0x4, { 0x0, 0x00, 0x00, 0x00 }));  // nop
+    EXPECT_TRUE(t.write_vmem(0x8, { 0x0, 0x00, 0x00, 0x00 }));  // nop
     EXPECT_TRUE(t.write_vmem(0xc, { 0xf4, 0xff, 0xff, 0x20 })); // back to 0
 
     sess.run();
+    mwr::usleep(1000);
     sess.stop();
 
     EXPECT_EQ(sess.reason().reason, VSP_STOP_REASON_USER);

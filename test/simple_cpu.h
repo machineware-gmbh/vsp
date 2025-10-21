@@ -49,13 +49,23 @@ private:
     std::vector<u32> m_breakpoints;
     std::vector<std::tuple<vcml::range, vcml::vcml_access>> m_watchpoints;
 
-    std::array<u32, 32> reg_file = { 0 };
-    u32 pc;
+    enum stop_reason {
+        HIT_BREAKPOINT,
+        HIT_RWATCHPOINT,
+        HIT_WWATCHPOINT,
+    };
+
+    struct sim_exception {
+        sim_exception(stop_reason reason): reason(reason) {}
+        stop_reason reason;
+    };
+
+    std::array<u32, 32> m_reg_file = { 0 };
+    u32 m_pc;
 
     u64 m_num_cycles;
-    u64 m_num_retired_insts;
 
-    void exec_inst(u32 inst);
+    void exec_inst();
 
     u32 mem_read(u32 adr, bool trigger_watchpoints = false);
     void mem_write(u32 adr, u32 dat);
