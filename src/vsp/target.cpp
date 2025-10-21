@@ -50,8 +50,8 @@ const char* target::name() const {
 }
 
 bool target::exp_backoff() {
-    constexpr unsigned long long max_sleep = 2e6;
-    unsigned long long sleep = 1000;
+    constexpr unsigned long long max_sleep = 2'000'000ull;
+    unsigned long long sleep = 1'000ull;
 
     while (sleep < max_sleep) {
         mwr::usleep(sleep);
