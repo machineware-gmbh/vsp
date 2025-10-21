@@ -37,17 +37,17 @@ public:
 
     optional<vector<string>> get();
     string get_str();
-    void set(const string& val);
-    void set(bool val);
-    void set(int val);
-    void set(long val);
-    void set(long long val);
-    void set(unsigned val);
-    void set(unsigned long val);
-    void set(unsigned long long val);
-    void set(float val);
-    void set(double val);
-    void set(long double val);
+    bool set(const string& val);
+    bool set(bool val);
+    bool set(int val);
+    bool set(long val);
+    bool set(long long val);
+    bool set(unsigned val);
+    bool set(unsigned long val);
+    bool set(unsigned long long val);
+    bool set(float val);
+    bool set(double val);
+    bool set(long double val);
 };
 
 } // namespace vsp

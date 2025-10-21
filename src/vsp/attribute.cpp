@@ -52,48 +52,49 @@ string attribute::get_str() {
     return ss.str();
 }
 
-void attribute::set(const string& val) {
-    m_conn.command("seta," + hierarchy_name() + "," + val);
+bool attribute::set(const string& val) {
+    auto resp = m_conn.command("seta," + hierarchy_name() + "," + val);
+    return connection::check_response(resp, 1);
 }
 
-void attribute::set(bool val) {
-    set(string(val ? "true" : "false"));
+bool attribute::set(bool val) {
+    return set(string(val ? "true" : "false"));
 }
 
-void attribute::set(int val) {
-    set(to_string(val));
+bool attribute::set(int val) {
+    return set(to_string(val));
 }
 
-void attribute::set(long val) {
-    set(to_string(val));
+bool attribute::set(long val) {
+    return set(to_string(val));
 }
 
-void attribute::set(long long val) {
-    set(to_string(val));
+bool attribute::set(long long val) {
+    return set(to_string(val));
 }
 
-void attribute::set(unsigned val) {
-    set(to_string(val));
+bool attribute::set(unsigned val) {
+    return set(to_string(val));
 }
 
-void attribute::set(unsigned long val) {
-    set(to_string(val));
+bool attribute::set(unsigned long val) {
+    return set(to_string(val));
 }
 
-void attribute::set(unsigned long long val) {
-    set(to_string(val));
+bool attribute::set(unsigned long long val) {
+    return set(to_string(val));
 }
 
-void attribute::set(float val) {
-    set(to_string(val));
+bool attribute::set(float val) {
+    return set(to_string(val));
 }
 
-void attribute::set(double val) {
-    set(to_string(val));
+bool attribute::set(double val) {
+    return set(to_string(val));
 }
 
-void attribute::set(long double val) {
-    set(to_string(val));
+bool attribute::set(long double val) {
+    return set(to_string(val));
 }
 
 } // namespace vsp
