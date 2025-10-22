@@ -73,8 +73,7 @@ using std::make_unique;
 using std::function;
 using std::pair;
 
-[[maybe_unused]] static string response_get_error(
-    const optional<vector<string>>& resp) {
+inline string response_get_error(const optional<vector<string>>& resp) {
     if (!resp.has_value())
         return "no response";
     if (resp.value().empty())
