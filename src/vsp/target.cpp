@@ -64,7 +64,7 @@ void target::step(size_t steps) {
     unsigned long long sleep = 1'000ull;
 
     for (size_t i = 0; i < steps; i++) {
-        string err("");
+        string err;
         do {
             auto resp = m_conn.command("step," + m_name);
 
