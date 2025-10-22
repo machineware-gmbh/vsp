@@ -354,7 +354,8 @@ TEST_F(session_test, virt_to_phys_while_running) {
 }
 
 TEST_F(session_test, stepping) {
-    target* t = sess.find_target("system.cpu");;
+    target* t = sess.find_target("system.cpu");
+    ;
     u64 pc;
 
     EXPECT_TRUE(t->write_vmem(0x0, { 0x0, 0x0, 0x0, 0x0 }));     // nop
@@ -396,4 +397,5 @@ TEST_F(session_test, stop) {
 //
 //        read/write watchpoint:
 //
-//        system exponential backoff: maybe use some kind of command to make the CPU slower?
+//        system exponential backoff: maybe use some kind of command to make
+//        the CPU slower?
