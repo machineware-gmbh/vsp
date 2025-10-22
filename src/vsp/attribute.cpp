@@ -54,7 +54,8 @@ string attribute::get_str() {
 
 void attribute::set(const string& val) {
     auto resp = m_conn.command("seta," + hierarchy_name() + "," + val);
-    MWR_REPORT_ON(!connection::check_response(resp, 1), "set failed");
+    MWR_REPORT_ON(!connection::check_response(resp, 1), "%s: set failed (%s)",
+                  name(), response_get_error(resp).c_str());
 }
 
 void attribute::set(bool val) {

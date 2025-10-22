@@ -73,6 +73,19 @@ using std::make_unique;
 using std::function;
 using std::pair;
 
+[[maybe_unused]] static string response_get_error(
+    const optional<vector<string>>& resp) {
+    if (!resp.has_value())
+        return "no response";
+    if (resp.value().empty())
+        return "no response";
+    if (resp.value()[0] != "E")
+        return "no error";
+    if (resp.value().size() < 2)
+        return "unknown error";
+    return resp.value()[1];
+}
+
 } // namespace vsp
 
 #endif
