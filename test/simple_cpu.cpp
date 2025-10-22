@@ -1,6 +1,6 @@
 #include "simple_cpu.h"
 
-static std::string reg_name(size_t ind) const {
+static std::string reg_name(size_t ind) {
     const static std::string names[33] = {
         "zero", "ra", "sp", "gp", "tp",  "t0",  "t1", "t2", "s0", "s1", "a0",
         "a1",   "a2", "a3", "a4", "a5",  "a6",  "a7", "s2", "s3", "s4", "s5",
