@@ -52,48 +52,48 @@ string attribute::get_str() {
     return ss.str();
 }
 
-bool attribute::set(const string& val) {
+void attribute::set(const string& val) {
     auto resp = m_conn.command("seta," + hierarchy_name() + "," + val);
-    return connection::check_response(resp, 1);
+    MWR_REPORT_ON(!connection::check_response(resp, 1), "set failed");
 }
 
-bool attribute::set(bool val) {
+void attribute::set(bool val) {
     return set(string(val ? "true" : "false"));
 }
 
-bool attribute::set(int val) {
+void attribute::set(int val) {
     return set(to_string(val));
 }
 
-bool attribute::set(long val) {
+void attribute::set(long val) {
     return set(to_string(val));
 }
 
-bool attribute::set(long long val) {
+void attribute::set(long long val) {
     return set(to_string(val));
 }
 
-bool attribute::set(unsigned val) {
+void attribute::set(unsigned val) {
     return set(to_string(val));
 }
 
-bool attribute::set(unsigned long val) {
+void attribute::set(unsigned long val) {
     return set(to_string(val));
 }
 
-bool attribute::set(unsigned long long val) {
+void attribute::set(unsigned long long val) {
     return set(to_string(val));
 }
 
-bool attribute::set(float val) {
+void attribute::set(float val) {
     return set(to_string(val));
 }
 
-bool attribute::set(double val) {
+void attribute::set(double val) {
     return set(to_string(val));
 }
 
-bool attribute::set(long double val) {
+void attribute::set(long double val) {
     return set(to_string(val));
 }
 

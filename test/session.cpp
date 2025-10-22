@@ -40,6 +40,7 @@ protected:
         }
     }
 
+    const vector<u8> inf_loop_inst{ 0x00, 0xff, 0xff, 0x20 };
     session sess;
     mwr::subprocess subp;
 };
@@ -128,8 +129,9 @@ TEST_F(session_test, attributes) {
     attr = cpu->find_attribute("arch");
     EXPECT_NE(attr, nullptr);
     EXPECT_EQ(attr->get_str(), "riscv");
+    EXPECT_EQ(attr->count(), 1);
 
-    EXPECT_TRUE(attr->set(string("riscvi")));
+    attr->set(string("riscvi"));
     EXPECT_EQ(attr->get_str(), "riscvi");
 
     attr = cpu->find_attribute("undefined-attribute");
@@ -147,16 +149,15 @@ TEST_F(session_test, attributes_while_running) {
     attribute* attr = cpu->find_attribute("arch");
 
     target* t = sess.find_target("system.cpu");
-    EXPECT_TRUE(t->write_vmem(0x0, { 0x0, 0x00, 0x00, 0x00 }));  // nop
-    EXPECT_TRUE(t->write_vmem(0x4, { 0xfc, 0xff, 0xff, 0x20 })); // back to 0
+    EXPECT_TRUE(t->write_vmem(0x0, inf_loop_inst));
 
     sess.run();
     EXPECT_EQ(attr->get_str(), "<error>");
-    EXPECT_FALSE(attr->set(string("riscvi")));
+    EXPECT_THROW(attr->set(string("riscvi")), mwr::report);
     sess.stop();
 }
 
-TEST_F(session_test, command) {
+TEST_F(session_test, commands) {
     module* mod = sess.find_module("");
     auto* cpu = mod->get_modules().front()->get_modules().front();
     EXPECT_STREQ(cpu->name(), "cpu");
@@ -176,9 +177,24 @@ TEST_F(session_test, command) {
     EXPECT_EQ(cmd, nullptr);
 }
 
+TEST_F(session_test, commands_while_running) {
+    module* mod = sess.find_module("");
+    auto* cpu = mod->get_modules().front()->get_modules().front();
+    EXPECT_STREQ(cpu->name(), "cpu");
+
+    command* cmd = cpu->find_command("dump");
+    EXPECT_NE(cmd, nullptr);
+
+    target* t = sess.find_target("system.cpu");
+    EXPECT_TRUE(t->write_vmem(0x0, inf_loop_inst));
+
+    sess.run();
+    EXPECT_THROW(cmd->execute(), std::runtime_error);
+    sess.stop();
+}
+
 TEST_F(session_test, register_read) {
-    auto& targets = sess.targets();
-    target& t = targets.front();
+    target* t = sess.find_target("system.cpu");
 
     const char* reg_names[33] = { "zero", "ra", "sp", "gp", "tp", "t0",  "t1",
                                   "t2",   "s0", "s1", "a0", "a1", "a2",  "a3",
@@ -187,7 +203,7 @@ TEST_F(session_test, register_read) {
                                   "t3",   "t4", "t5", "t6", "pc" };
 
     size_t i = 0;
-    for (auto& reg : t.regs()) {
+    for (auto& reg : t->regs()) {
         EXPECT_STREQ(reg.name(), reg_names[i]);
 
         vector<u8> ret;
@@ -198,18 +214,17 @@ TEST_F(session_test, register_read) {
     }
 
     u64 pc;
-    t.pc(pc);
+    t->pc(pc);
     EXPECT_EQ(pc, 0);
 
-    auto* reg = t.find_reg("undefined-registers");
+    auto* reg = t->find_reg("undefined-registers");
     EXPECT_EQ(reg, nullptr);
 }
 
 TEST_F(session_test, register_write) {
-    auto& targets = sess.targets();
-    target& t = targets.front();
+    target* t = sess.find_target("system.cpu");
 
-    auto* reg = t.find_reg("a5");
+    auto* reg = t->find_reg("a5");
     EXPECT_TRUE(reg->set_value({ 1, 2, 3, 4 }));
 
     vector<u8> ret;
@@ -217,7 +232,7 @@ TEST_F(session_test, register_write) {
     EXPECT_THAT(ret, ElementsAre(1, 2, 3, 4));
 
     // write into a non-writable registers
-    reg = t.find_reg("zero");
+    reg = t->find_reg("zero");
     EXPECT_FALSE(reg->set_value({ 1, 2, 3, 4 }));
 
     EXPECT_TRUE(reg->get_value(ret));
@@ -225,38 +240,35 @@ TEST_F(session_test, register_write) {
 }
 
 TEST_F(session_test, register_size) {
-    auto& targets = sess.targets();
-    target& t = targets.front();
+    target* t = sess.find_target("system.cpu");
 
-    auto* reg = t.find_reg("a5");
+    auto* reg = t->find_reg("a5");
     EXPECT_EQ(reg->size(), 4);
 
-    reg = t.find_reg("zero");
+    reg = t->find_reg("zero");
     EXPECT_EQ(reg->size(), 4);
 }
 
 TEST_F(session_test, memory_read_write) {
-    auto& targets = sess.targets();
-    target& t = targets.front();
+    target* t = sess.find_target("system.cpu");
     vector<u8> data{ 1, 2, 3, 4 };
     vector<u8> ret;
 
     // write and read in bounds
     constexpr u32 addr_in_bound = 0x42;
-    EXPECT_TRUE(t.write_vmem(addr_in_bound, data));
-    EXPECT_THAT(t.read_vmem(addr_in_bound, 4), ElementsAre(1, 2, 3, 4));
+    EXPECT_TRUE(t->write_vmem(addr_in_bound, data));
+    EXPECT_THAT(t->read_vmem(addr_in_bound, 4), ElementsAre(1, 2, 3, 4));
 
     // write and read out of bounds
     constexpr u32 addr_oo_bound = 0x8000;
-    EXPECT_TRUE(t.write_vmem(addr_oo_bound, data));
-    EXPECT_THAT(t.read_vmem(addr_oo_bound, 4), ElementsAre(0, 0, 0, 0));
+    EXPECT_TRUE(t->write_vmem(addr_oo_bound, data));
+    EXPECT_THAT(t->read_vmem(addr_oo_bound, 4), ElementsAre(0, 0, 0, 0));
 }
 
 TEST_F(session_test, breakpoint) {
-    auto& targets = sess.targets();
-    target& t = targets.front();
+    target* t = sess.find_target("system.cpu");
 
-    auto bp = t.insert_breakpoint(0x04);
+    auto bp = t->insert_breakpoint(0x04);
     EXPECT_TRUE(bp.has_value());
     EXPECT_EQ(bp.value().addr, 0x04);
 
@@ -264,31 +276,40 @@ TEST_F(session_test, breakpoint) {
     wait_for_target();
 
     u64 pc;
-    EXPECT_TRUE(t.pc(pc));
+    EXPECT_TRUE(t->pc(pc));
     EXPECT_EQ(pc, 4);
     EXPECT_EQ(sess.reason().reason, VSP_STOP_REASON_BREAKPOINT);
 
-    EXPECT_TRUE(t.remove_breakpoint(bp.value()));
+    EXPECT_TRUE(t->remove_breakpoint(bp.value()));
+}
+
+TEST_F(session_test, breakpoint_while_running) {
+    target* t = sess.find_target("system.cpu");
+    EXPECT_TRUE(t->write_vmem(0x0, inf_loop_inst));
+
+    sess.run();
+    auto bp = t->insert_breakpoint(0x08);
+    EXPECT_FALSE(bp.has_value());
+    sess.stop();
 }
 
 TEST_F(session_test, watchpoint) {
-    auto& targets = sess.targets();
-    target& t = targets.front();
+    target* t = sess.find_target("system.cpu");
 
-    auto wp_read = t.insert_watchpoint(0x20, 0x04, WP_READ);
+    auto wp_read = t->insert_watchpoint(0x20, 0x04, WP_READ);
     EXPECT_TRUE(wp_read.has_value());
     EXPECT_EQ(wp_read.value().base, 0x20);
     EXPECT_EQ(wp_read.value().size, 0x04);
 
-    auto wp_write = t.insert_watchpoint(0x24, 0x04, WP_WRITE);
+    auto wp_write = t->insert_watchpoint(0x24, 0x04, WP_WRITE);
     EXPECT_TRUE(wp_write.has_value());
     EXPECT_EQ(wp_write.value().base, 0x24);
     EXPECT_EQ(wp_write.value().size, 0x04);
 
     vector<u8> inst_load{ 0x20, 0x01, 0x00, 0x11 };  // load from address 0x20
     vector<u8> inst_store{ 0x24, 0x01, 0x00, 0x10 }; // store to address 0x24
-    EXPECT_TRUE(t.write_vmem(0x0, inst_load));
-    EXPECT_TRUE(t.write_vmem(0x4, inst_store));
+    EXPECT_TRUE(t->write_vmem(0x0, inst_load));
+    EXPECT_TRUE(t->write_vmem(0x4, inst_store));
 
     sess.run();
     wait_for_target();
@@ -298,43 +319,60 @@ TEST_F(session_test, watchpoint) {
     wait_for_target();
     EXPECT_EQ(sess.reason().reason, VSP_STOP_REASON_RWATCHPOINT);
 
-    EXPECT_TRUE(t.remove_watchpoint(wp_read.value()));
+    EXPECT_TRUE(t->remove_watchpoint(wp_read.value()));
 
     sess.run();
     wait_for_target();
     EXPECT_EQ(sess.reason().reason, VSP_STOP_REASON_WWATCHPOINT);
 
-    EXPECT_TRUE(t.remove_watchpoint(wp_write.value()));
+    EXPECT_TRUE(t->remove_watchpoint(wp_write.value()));
+}
+
+TEST_F(session_test, watchpoint_while_running) {
+    target* t = sess.find_target("system.cpu");
+    EXPECT_TRUE(t->write_vmem(0x0, inf_loop_inst));
+
+    sess.run();
+    auto wp = t->insert_watchpoint(0x8, 0x04, WP_WRITE);
+    EXPECT_FALSE(wp.has_value());
+    sess.stop();
 }
 
 TEST_F(session_test, virt_to_phys) {
-    auto& targets = sess.targets();
-    target& t = targets.front();
+    target* t = sess.find_target("system.cpu");
 
-    EXPECT_EQ(t.virt_to_phys(0x04), 0x04);
+    EXPECT_EQ(t->virt_to_phys(0x04), 0x04);
+}
+
+TEST_F(session_test, virt_to_phys_while_running) {
+    target* t = sess.find_target("system.cpu");
+    EXPECT_TRUE(t->write_vmem(0x0, inf_loop_inst));
+
+    sess.run();
+    EXPECT_EQ(t->virt_to_phys(0x04), 0);
+    sess.stop();
 }
 
 TEST_F(session_test, stepping) {
-    auto& targets = sess.targets();
-    target& t = targets.front();
+    target* t = sess.find_target("system.cpu");;
     u64 pc;
 
-    EXPECT_TRUE(t.write_vmem(0x0, { 0x0, 0x0, 0x0, 0x0 }));     // nop
-    EXPECT_TRUE(t.write_vmem(0x4, { 0x0, 0x0, 0x0, 0x0 }));     // nop
-    EXPECT_TRUE(t.write_vmem(0x8, { 0x0, 0x0, 0x0, 0x0 }));     // nop
-    EXPECT_TRUE(t.write_vmem(0xc, { 0xf4, 0xff, 0xff, 0x20 })); // back to 0
+    EXPECT_TRUE(t->write_vmem(0x0, { 0x0, 0x0, 0x0, 0x0 }));     // nop
+    EXPECT_TRUE(t->write_vmem(0x4, { 0x0, 0x0, 0x0, 0x0 }));     // nop
+    EXPECT_TRUE(t->write_vmem(0x8, { 0x0, 0x0, 0x0, 0x0 }));     // nop
+    EXPECT_TRUE(t->write_vmem(0xc, { 0xf4, 0xff, 0xff, 0x20 })); // back to 0
 
-    sess.stepi(t);
+    sess.stepi(*t);
     wait_for_target();
 
     EXPECT_EQ(sess.reason().reason, VSP_STOP_REASON_STEP_COMPLETE);
-    EXPECT_TRUE(t.pc(pc));
+    EXPECT_TRUE(t->pc(pc));
     EXPECT_EQ(pc, 0x4);
 
-    t.step(3);
+    t->step(3);
     wait_for_target();
 
-    EXPECT_TRUE(t.pc(pc));
+    EXPECT_TRUE(t->pc(pc));
     EXPECT_EQ(pc, 0x0);
 
     sess.step(5000, true);
@@ -343,11 +381,9 @@ TEST_F(session_test, stepping) {
 }
 
 TEST_F(session_test, stop) {
-    auto& targets = sess.targets();
-    target& t = targets.front();
+    target* t = sess.find_target("system.cpu");
 
-    EXPECT_TRUE(t.write_vmem(0x0, { 0x0, 0x00, 0x00, 0x00 }));  // nop
-    EXPECT_TRUE(t.write_vmem(0x4, { 0xfc, 0xff, 0xff, 0x20 })); // back to 0
+    EXPECT_TRUE(t->write_vmem(0x0, inf_loop_inst));
 
     sess.run();
     mwr::usleep(1000);
@@ -357,9 +393,7 @@ TEST_F(session_test, stop) {
 }
 
 // TODOs: immediate stop: there seems to be some kind of race condition
-//        failed breakpoint insertion: maybe use some kind of command to toggle
-//        this behavior in the simple system failed watchpoint insertion: maybe
-//        use some kind of command to toggle this behavior in the simple system
-//        read/write watchpoint: maybe use some kind of command to toggle this
-//        behavior in the simple system exponential backoff: maybe use some
-//        kind of command to make the CPU slower?
+//
+//        read/write watchpoint:
+//
+//        system exponential backoff: maybe use some kind of command to make the CPU slower?
