@@ -25,7 +25,7 @@ list<shared_ptr<session>> session::local_sessions;
 
 // converts a string of bytes to a vector of bytes
 // "ddccbbaa" -> { aa, bb, cc, dd }
-static void strhex(u8* buffer, size_t buflen, const string& bytes) {
+static void strhex(u8* buffer, size_t buflen, string bytes) {
     if (!buffer)
         return;
 
@@ -33,6 +33,9 @@ static void strhex(u8* buffer, size_t buflen, const string& bytes) {
 
     if (bytes.empty())
         return;
+
+    if (bytes.substr(0, 2) == "0x")
+        bytes = bytes.substr(2);
 
     size_t src_len = min(bytes.size(), buflen);
     size_t src_off = (bytes.size() > buflen) ? bytes.size() - buflen : 0;
