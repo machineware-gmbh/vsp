@@ -58,43 +58,43 @@ void attribute::set(const string& val) {
 }
 
 void attribute::set(bool val) {
-    return set(string(val ? "true" : "false"));
+    set(string(val ? "true" : "false"));
 }
 
 void attribute::set(int val) {
-    return set(to_string(val));
+    set(to_string(val));
 }
 
 void attribute::set(long val) {
-    return set(to_string(val));
+    set(to_string(val));
 }
 
 void attribute::set(long long val) {
-    return set(to_string(val));
+    set(to_string(val));
 }
 
 void attribute::set(unsigned val) {
-    return set(to_string(val));
+    set(to_string(val));
 }
 
 void attribute::set(unsigned long val) {
-    return set(to_string(val));
+    set(to_string(val));
 }
 
 void attribute::set(unsigned long long val) {
-    return set(to_string(val));
+    set(to_string(val));
 }
 
 void attribute::set(float val) {
-    return set(to_string(val));
+    set(to_string(val));
 }
 
 void attribute::set(double val) {
-    return set(to_string(val));
+    set(to_string(val));
 }
 
 void attribute::set(long double val) {
-    return set(to_string(val));
+    set(to_string(val));
 }
 
 } // namespace vsp
