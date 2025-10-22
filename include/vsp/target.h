@@ -55,7 +55,9 @@ public:
 
     const char* name() const;
 
-    bool step(size_t steps = 1);
+    void step();
+    void step(size_t steps);
+
     u64 virt_to_phys(u64 va);
 
     optional<breakpoint> insert_breakpoint(u64 addr);

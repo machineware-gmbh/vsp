@@ -49,41 +49,35 @@ const char* target::name() const {
     return m_name.c_str();
 }
 
-bool target::exp_backoff() {
-    constexpr unsigned long long max_sleep = 2'000'000ull;
-    unsigned long long sleep = 1'000ull;
+void target::step() {
+    auto resp = m_conn.command("step," + m_name);
 
-    while (sleep < max_sleep) {
-        mwr::usleep(sleep);
-        auto resp = m_conn.command("step," + m_name);
-
-        if (connection::check_response(resp, 1))
-            return true;
-
-        const string& err = resp->at(1);
-        if (err.compare("simulation running"))
-            return false;
-
-        sleep *= 2;
+    if (!connection::check_response(resp, 1)) {
+        MWR_REPORT_ON(!resp.has_value(), "step failed");
+        const string& err = resp.value().at(1);
+        MWR_REPORT_ON(err != "simulation running", "step failed");
     }
-
-    return false;
 }
 
-bool target::step(size_t steps) {
-    for (size_t i = 0; i < steps; ++i) {
-        auto resp = m_conn.command("step," + m_name);
+void target::step(size_t steps) {
+    constexpr unsigned long long max_sleep = 1'000ull << 6;
+    unsigned long long sleep = 1'000ull;
 
-        if (!connection::check_response(resp, 1)) {
-            const string& err = resp.value().at(1);
-            if (err.compare("simulation running"))
-                return false;
+    for (size_t i = 0; i < steps; i++) {
+        string err("");
+        do {
+            auto resp = m_conn.command("step," + m_name);
 
-            if (!exp_backoff())
-                return false;
-        }
+            err = "";
+            if (!connection::check_response(resp, 1)) {
+                MWR_REPORT_ON(!resp.has_value(), "step failed");
+                err = resp.value().at(1);
+                MWR_REPORT_ON(err != "simulation running", "step failed");
+                mwr::usleep(sleep);
+                sleep *= sleep >= max_sleep ? 1 : 2;
+            }
+        } while (err == "simulation running");
     }
-    return true;
 }
 
 u64 target::virt_to_phys(u64 va) {
