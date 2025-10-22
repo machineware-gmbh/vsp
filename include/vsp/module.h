@@ -54,7 +54,7 @@ public:
     void add_command(const string& name, size_t argc, const string& desc);
 
     const list<module*>& get_modules();
-    const list<attribute*>& get_attritbutes();
+    const list<attribute*>& get_attributes();
     const list<command*>& get_commands();
 };
 
