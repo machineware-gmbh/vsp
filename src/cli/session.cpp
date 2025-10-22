@@ -63,7 +63,7 @@ bool session::handle_list(const string& args) {
     }
 
     if (show_attr) {
-        for (auto& a : m_current_mod->get_attritbutes()) {
+        for (auto& a : m_current_mod->get_attributes()) {
             cout << termcolors::WHITE << a->name() << termcolors::CLEAR
                  << endl;
         }
