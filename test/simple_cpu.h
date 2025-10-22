@@ -5,23 +5,23 @@
 
 #include "vcml.h"
 
-using mwr::i8;
-using mwr::i16;
-using mwr::i32;
-using mwr::i64;
-
-using mwr::u8;
-using mwr::u16;
-using mwr::u32;
-using mwr::u64;
-
-using mwr::string;
-
 class simple_cpu : public vcml::processor
 {
 public:
-    using inst_t = u32;
-    using reg_t = u32;
+    using i8 = mwr::i8;
+    using i16 = mwr::i16;
+    using i32 = mwr::i32;
+    using i64 = mwr::i64;
+
+    using u8 = mwr::u8;
+    using u16 = mwr::u16;
+    using u32 = mwr::u32;
+    using u64 = mwr::u64;
+
+    using string = mwr::string;
+
+    using inst_t = mwr::u32;
+    using reg_t = mwr::u32;
 
     vcml::property<u64> wait_per_inst;
 

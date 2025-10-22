@@ -1,11 +1,11 @@
 #include "simple_cpu.h"
 
-static string reg_name(size_t ind) {
-    static string names[33] = { "zero", "ra", "sp", "gp", "tp", "t0",  "t1",
-                                "t2",   "s0", "s1", "a0", "a1", "a2",  "a3",
-                                "a4",   "a5", "a6", "a7", "s2", "s3",  "s4",
-                                "s5",   "s6", "s7", "s8", "s9", "s10", "s11",
-                                "t3",   "t4", "t5", "t6", "pc" };
+static std::string reg_name(size_t ind) const {
+    const static std::string names[33] = {
+        "zero", "ra", "sp", "gp", "tp",  "t0",  "t1", "t2", "s0", "s1", "a0",
+        "a1",   "a2", "a3", "a4", "a5",  "a6",  "a7", "s2", "s3", "s4", "s5",
+        "s6",   "s7", "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6", "pc"
+    };
 
     return names[ind];
 }
@@ -22,15 +22,15 @@ simple_cpu::simple_cpu(const char* name):
     reset();
 }
 
-u64 simple_cpu::cycle_count() const {
+mwr::u64 simple_cpu::cycle_count() const {
     return m_num_cycles;
 };
 
-u64 simple_cpu::program_counter() {
+mwr::u64 simple_cpu::program_counter() {
     return m_pc;
 }
 
-u64 simple_cpu::stack_pointer() {
+mwr::u64 simple_cpu::stack_pointer() {
     return m_reg_file[2];
 }
 
@@ -187,7 +187,7 @@ void simple_cpu::exec_inst() {
     }
 }
 
-u32 simple_cpu::mem_read(u32 adr, bool trigger_watchpoints) {
+mwr::u32 simple_cpu::mem_read(u32 adr, bool trigger_watchpoints) {
     u32 dat;
     auto rs = data.read(adr, &dat, sizeof(u32), vcml::SBI_NONE);
 
