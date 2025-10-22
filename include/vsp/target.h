@@ -43,7 +43,6 @@ private:
     list<cpureg> m_regs;
 
     bool update_regs();
-    bool exp_backoff();
 
 public:
     explicit target(connection& conn, const string& name);
