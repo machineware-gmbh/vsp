@@ -106,7 +106,7 @@ const list<module*>& module::get_modules() {
     return m_mods;
 }
 
-const list<attribute*>& module::get_attritbutes() {
+const list<attribute*>& module::get_attributes() {
     return m_attrs;
 }
 
