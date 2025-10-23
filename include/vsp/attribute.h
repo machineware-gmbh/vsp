@@ -47,7 +47,6 @@ public:
     void set(unsigned long long val);
     void set(float val);
     void set(double val);
-    void set(long double val);
 };
 
 } // namespace vsp

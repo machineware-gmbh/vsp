@@ -11,7 +11,18 @@ static std::string reg_name(size_t ind) {
 }
 
 simple_cpu::simple_cpu(const char* name):
-    vcml::processor(name, "riscv"), wait_per_inst("wait_per_inst", 0) {
+    vcml::processor(name, "riscv"),
+    wait_per_inst("wait_per_inst", 0),
+    bool_property("bool_property", false),
+    i32_property("i32_property", 0),
+    i64_property("i64_property", 0),
+    u32_property("u32_property", 0),
+    u64_property("u64_property", 0),
+    float_property("float_property", 0.f),
+    double_property("double_property", 0.),
+    long_double_property("long_double_property", 0.l),
+    string_vector_property("string_vector_property", { "", "", "" }),
+    i32_vector_property("i32_vector_property", { 0, 0, 0 }) {
     set_little_endian();
 
     define_cpureg_r(0, reg_name(0), sizeof(reg_t));
