@@ -25,29 +25,27 @@ list<shared_ptr<session>> session::local_sessions;
 // converts a string of bytes to a vector of bytes
 // "ddccbbaa" -> { aa, bb, cc, dd }
 static void strhex(u8* buffer, size_t buflen, const string& bytes) {
-    if (!buffer || buflen == 0)
+    if (!buffer)
         return;
 
     memset(buffer, 0, buflen);
 
-    size_t start = mwr::starts_with(bytes, "0x") ? 2 : 0;
-
-    if (start >= bytes.size())
+    if (bytes.empty())
         return;
 
-    size_t avail = bytes.size() - start;
-    size_t hex_len = std::min(avail, buflen * 2);
-    size_t i = start + hex_len;
-    size_t dst = 0;
-
-    if (hex_len & 1) {
-        buffer[dst++] = (u8)(stoi(bytes.substr(i - 1, 1), nullptr, 16));
-        --i;
+    if (bytes.size() & 1) {
+        mwr::log_error("corrupted byte string of size %lu", bytes.size());
+        return;
     }
 
-    while (dst < buflen && i >= start + 2) {
-        buffer[dst++] = (u8)(stoi(bytes.substr(i - 2, 2), nullptr, 16));
-        i -= 2;
+    size_t src_idx = std::min(bytes.size(), buflen * 2);
+    size_t dst_idx = 0;
+    constexpr size_t chars_per_byte = 2;
+
+    while (src_idx != 0) {
+        src_idx -= chars_per_byte;
+        string chunk = bytes.substr(src_idx, chars_per_byte);
+        buffer[dst_idx++] = (u8)stoi(chunk, 0, 16);
     }
 }
 
