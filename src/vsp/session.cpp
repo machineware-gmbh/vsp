@@ -15,7 +15,6 @@
 
 #include <pugixml.hpp>
 
-using std::min;
 using std::stoi;
 using std::stoll;
 
@@ -34,17 +33,19 @@ static void strhex(u8* buffer, size_t buflen, const string& bytes) {
     if (bytes.empty())
         return;
 
-    size_t src_len = min(bytes.size(), buflen);
-    size_t src_off = (bytes.size() > buflen) ? bytes.size() - buflen : 0;
+    if (bytes.size() & 1) {
+        mwr::log_error("corrupted byte string of size %lu", bytes.size());
+        return;
+    }
 
-    size_t src_idx = src_len - src_off, dst_idx = 0;
-    size_t stride = (src_len & 1) ? 1 : 2;
+    size_t src_idx = std::min(bytes.size(), buflen * 2);
+    size_t dst_idx = 0;
+    constexpr size_t chars_per_byte = 2;
 
     while (src_idx != 0) {
-        src_idx -= stride;
-        string chunk = bytes.substr(src_idx, stride);
+        src_idx -= chars_per_byte;
+        string chunk = bytes.substr(src_idx, chars_per_byte);
         buffer[dst_idx++] = (u8)stoi(chunk, 0, 16);
-        stride = 2;
     }
 }
 
