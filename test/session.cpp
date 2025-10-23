@@ -196,49 +196,49 @@ TEST_F(session_test, attributes) {
 TEST_F(session_test, attribute_types) {
     attribute* attr;
 
-    attr = sess.find_attribute("system.bool_property");
+    attr = sess.find_attribute("system.cpu.bool_property");
     ASSERT_NE(attr, nullptr);
     attr->set(true);
     EXPECT_EQ(attr->type(), "bool");
     EXPECT_EQ(attr->get_str(), "true");
 
-    attr = sess.find_attribute("system.i32_property");
+    attr = sess.find_attribute("system.cpu.i32_property");
     ASSERT_NE(attr, nullptr);
     attr->set((i32)1);
     EXPECT_EQ(attr->type(), "i32");
     EXPECT_EQ(attr->get_str(), "1");
 
-    attr = sess.find_attribute("system.i64_property");
+    attr = sess.find_attribute("system.cpu.i64_property");
     ASSERT_NE(attr, nullptr);
     attr->set((i64)2);
     EXPECT_EQ(attr->type(), "i64");
     EXPECT_EQ(attr->get_str(), "2");
 
-    attr = sess.find_attribute("system.u32_property");
+    attr = sess.find_attribute("system.cpu.u32_property");
     ASSERT_NE(attr, nullptr);
     attr->set((u32)3);
     EXPECT_EQ(attr->type(), "u32");
     EXPECT_EQ(attr->get_str(), "3");
 
-    attr = sess.find_attribute("system.u64_property");
+    attr = sess.find_attribute("system.cpu.u64_property");
     ASSERT_NE(attr, nullptr);
     attr->set((u64)4);
     EXPECT_EQ(attr->type(), "u64");
     EXPECT_EQ(attr->get_str(), "4");
 
-    attr = sess.find_attribute("system.float_property");
+    attr = sess.find_attribute("system.cpu.float_property");
     ASSERT_NE(attr, nullptr);
     attr->set(5.5f);
     EXPECT_EQ(attr->type(), "float");
     EXPECT_EQ(attr->get_str(), "5.5");
 
-    attr = sess.find_attribute("system.double_property");
+    attr = sess.find_attribute("system.cpu.double_property");
     ASSERT_NE(attr, nullptr);
     attr->set(6.25);
     EXPECT_EQ(attr->type(), "double");
     EXPECT_EQ(attr->get_str(), "6.25");
 
-    attr = sess.find_attribute("system.long_double_property");
+    attr = sess.find_attribute("system.cpu.long_double_property");
     ASSERT_NE(attr, nullptr);
     attr->set(7.125);
     EXPECT_EQ(attr->type(), "unknown"); // currently not supported by VCML
@@ -575,9 +575,7 @@ TEST_F(session_test, stepping) {
     EXPECT_EQ(pc, 0x4);
 
     // mocking a very slow simulation
-    module* mod = sess.find_module("system");
-    ASSERT_NE(mod, nullptr);
-    attribute* wait_per_inst = mod->find_attribute("wait_per_inst");
+    attribute* wait_per_inst = sess.find_attribute("system.cpu.wait_per_inst");
     ASSERT_NE(wait_per_inst, nullptr);
     wait_per_inst->set(500'000ull);
     targ->step(3);

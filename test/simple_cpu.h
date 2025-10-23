@@ -37,7 +37,7 @@ public:
     vcml::property<std::vector<i32>> i32_vector_property;
     vcml::property<std::vector<string>> string_vector_property;
 
-    simple_cpu(const char* name);
+    simple_cpu(const sc_core::sc_module_name& nm);
 
     virtual u64 cycle_count() const override;
 

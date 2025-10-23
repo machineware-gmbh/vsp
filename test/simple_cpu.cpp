@@ -10,8 +10,8 @@ static std::string reg_name(size_t ind) {
     return names[ind];
 }
 
-simple_cpu::simple_cpu(const char* name):
-    vcml::processor(name, "riscv"),
+simple_cpu::simple_cpu(const sc_core::sc_module_name& nm):
+    vcml::processor(nm, "riscv"),
     wait_per_inst("wait_per_inst", 0),
     bool_property("bool_property", false),
     i32_property("i32_property", 0),
