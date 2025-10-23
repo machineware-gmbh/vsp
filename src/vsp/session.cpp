@@ -15,7 +15,6 @@
 
 #include <pugixml.hpp>
 
-using std::min;
 using std::stoi;
 using std::stoll;
 
@@ -42,12 +41,12 @@ static void strhex(u8* buffer, size_t buflen, const string& bytes) {
     size_t dst = 0;
 
     if (hex_len & 1) {
-        buffer[dst++] = (u8)(std::stoi(bytes.substr(i - 1, 1), nullptr, 16));
+        buffer[dst++] = (u8)(stoi(bytes.substr(i - 1, 1), nullptr, 16));
         --i;
     }
 
     while (dst < buflen && i >= start + 2) {
-        buffer[dst++] = (u8)(std::stoi(bytes.substr(i - 2, 2), nullptr, 16));
+        buffer[dst++] = (u8)(stoi(bytes.substr(i - 2, 2), nullptr, 16));
         i -= 2;
     }
 }
