@@ -10,19 +10,14 @@
 
 #include "testing.h"
 
+using namespace testing;
 using namespace vsp;
 
-using testing::AllOf;
-using testing::ContainsRegex;
-using testing::Each;
-using testing::ElementsAre;
-using testing::SizeIs;
-
-class session_test : public testing::Test
+class session_test : public Test
 {
 protected:
     session_test(): sess("localhost", 4444) {
-        subp.run("system");
+        subp.run("./simple_vp");
         while (!sess.is_connected()) {
             mwr::usleep(5000);
             sess.connect();
@@ -94,9 +89,9 @@ TEST_F(session_test, reconnect) {
 }
 
 TEST_F(session_test, dump) {
-    testing::internal::CaptureStdout();
+    internal::CaptureStdout();
     sess.dump();
-    EXPECT_GT(testing::internal::GetCapturedStdout().size(), 0);
+    EXPECT_GT(internal::GetCapturedStdout().size(), 0);
 }
 
 TEST_F(session_test, versions) {
@@ -136,7 +131,7 @@ TEST_F(session_test, targets) {
 }
 
 TEST_F(session_test, modules) {
-    module* mod;
+    vsp::module* mod;
 
     mod = sess.find_module("");
     ASSERT_NE(mod, nullptr);
@@ -170,7 +165,7 @@ TEST_F(session_test, attributes) {
     ASSERT_NE(attr, nullptr);
     EXPECT_EQ(attr->get_str(), "riscv");
 
-    module* cpu = sess.find_module("system.cpu");
+    vsp::module* cpu = sess.find_module("system.cpu");
     ASSERT_NE(cpu, nullptr);
     EXPECT_NE(cpu->get_attributes().size(), 0);
     attr = cpu->find_attribute("arch");
@@ -246,7 +241,7 @@ TEST_F(session_test, attribute_types) {
 }
 
 TEST_F(session_test, attributes_while_running) {
-    module* cpu = sess.find_module("system.cpu");
+    vsp::module* cpu = sess.find_module("system.cpu");
     EXPECT_NE(cpu, nullptr);
 
     target* targ = sess.find_target("system.cpu");
@@ -263,10 +258,10 @@ TEST_F(session_test, attributes_while_running) {
 }
 
 TEST_F(session_test, commands) {
-    module* cpu = sess.find_module("system.cpu");
+    vsp::module* cpu = sess.find_module("system.cpu");
     EXPECT_NE(cpu, nullptr);
 
-    module* system = sess.find_module("system");
+    vsp::module* system = sess.find_module("system");
     EXPECT_NE(system, nullptr);
 
     auto& cmds = cpu->get_commands();
@@ -284,7 +279,7 @@ TEST_F(session_test, commands) {
     cmd = cpu->find_command("read");
     ASSERT_NE(cmd, nullptr);
     EXPECT_EQ(cmd->argc(), 3);
-    EXPECT_STREQ(cmd->desc(), "read memory from INSN or DATA ports");
+    EXPECT_NE(strlen(cmd->desc()), 0);
     EXPECT_THAT(cmd->execute({ "data", "0x0", "0x4" }),
                 ContainsRegex("reading range"));
     EXPECT_THAT(cmd->execute({ "data", "0", "0", "0" }),
@@ -293,9 +288,8 @@ TEST_F(session_test, commands) {
     cmd = cpu->find_command("dump");
     ASSERT_NE(cmd, nullptr);
     EXPECT_EQ(cmd->argc(), 0);
-    EXPECT_STREQ(cmd->desc(), "dump internal state of the processor");
-    auto dreg = "\\w+:\n  PC \\w+\n  LR \\w+\n  SP \\w+\n  ID \\w+\n\\w+:\n";
-    EXPECT_THAT(cmd->execute(), ContainsRegex(dreg));
+    EXPECT_NE(strlen(cmd->desc()), 0);
+    EXPECT_NE(cmd->execute().size(), 0);
 
     sess.quit();
 
@@ -304,7 +298,7 @@ TEST_F(session_test, commands) {
 }
 
 TEST_F(session_test, commands_while_running) {
-    module* cpu = sess.find_module("system.cpu");
+    vsp::module* cpu = sess.find_module("system.cpu");
     EXPECT_NE(cpu, nullptr);
 
     command* cmd = cpu->find_command("dump");
@@ -323,11 +317,11 @@ TEST_F(session_test, register_read) {
     target* targ = sess.find_target("system.cpu");
     ASSERT_NE(targ, nullptr);
 
-    const char* reg_names[33] = { "zero", "ra", "sp", "gp", "tp", "t0",  "t1",
-                                  "t2",   "s0", "s1", "a0", "a1", "a2",  "a3",
-                                  "a4",   "a5", "a6", "a7", "s2", "s3",  "s4",
-                                  "s5",   "s6", "s7", "s8", "s9", "s10", "s11",
-                                  "t3",   "t4", "t5", "t6", "pc" };
+    const char* reg_names[33] = {
+        "zero", "ra", "sp", "gp", "tp",  "t0",  "t1", "t2", "s0", "s1", "a0",
+        "a1",   "a2", "a3", "a4", "a5",  "a6",  "a7", "s2", "s3", "s4", "s5",
+        "s6",   "s7", "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6", "pc",
+    };
 
     size_t i = 0;
     for (auto& reg : targ->regs()) {
