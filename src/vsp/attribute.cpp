@@ -94,8 +94,4 @@ void attribute::set(double val) {
     set(to_string(val));
 }
 
-void attribute::set(long double val) {
-    set(to_string(val));
-}
-
 } // namespace vsp

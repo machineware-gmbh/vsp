@@ -2,6 +2,7 @@
 #define SIMPLE_CPU_H
 
 #include <array>
+#include <vector>
 
 #include "vcml.h"
 
@@ -25,7 +26,18 @@ public:
 
     vcml::property<u64> wait_per_inst;
 
-    simple_cpu(const char* name);
+    vcml::property<bool> bool_property;
+    vcml::property<i32> i32_property;
+    vcml::property<i64> i64_property;
+    vcml::property<u32> u32_property;
+    vcml::property<u64> u64_property;
+    vcml::property<float> float_property;
+    vcml::property<double> double_property;
+    vcml::property<long double> long_double_property;
+    vcml::property<std::vector<i32>> i32_vector_property;
+    vcml::property<std::vector<string>> string_vector_property;
+
+    simple_cpu(const sc_core::sc_module_name& nm);
 
     virtual u64 cycle_count() const override;
 
