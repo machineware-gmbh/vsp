@@ -17,7 +17,9 @@ class session_test : public Test
 {
 protected:
     session_test(): sess("localhost", 4444) {
-        subp.run("simple_vp");
+        string path = mwr::dirname(mwr::progname());
+        MWR_ERROR_ON(!subp.run(path + "/simple_vp"),
+                     "failed to launch simple_vp");
         while (!sess.is_connected()) {
             mwr::usleep(5000);
             sess.connect();
