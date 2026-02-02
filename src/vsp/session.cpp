@@ -34,7 +34,7 @@ static void strhex(u8* buffer, size_t buflen, const string& bytes) {
         return;
 
     if (bytes.size() & 1) {
-        mwr::log_error("corrupted byte string of size %lu", bytes.size());
+        log_error("corrupted byte string of size %lu", bytes.size());
         return;
     }
 
@@ -213,9 +213,8 @@ void session::update_reason(const string& reason) {
 
         string data = args[3];
         if (data.size() > stop_reason::DATA_SIZE) {
-            mwr::log_error(
-                "wwatchpoint: written %lu bytes (>%lu), data dropped",
-                data.size(), stop_reason::DATA_SIZE);
+            log_error("wwatchpoint: written %lu bytes (>%lu), data dropped",
+                      data.size(), stop_reason::DATA_SIZE);
         }
 
         strhex(newreason.wwatchpoint.data, stop_reason::DATA_SIZE, data);

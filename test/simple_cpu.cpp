@@ -46,7 +46,7 @@ mwr::u64 simple_cpu::stack_pointer() {
 }
 
 void simple_cpu::reset() {
-    mwr::log_debug("resetting cpu");
+    log_debug("resetting cpu");
     m_pc = 0;
 
     for (auto& reg : m_reg_file)
@@ -54,7 +54,7 @@ void simple_cpu::reset() {
 }
 
 void simple_cpu::simulate(size_t cycles) {
-    mwr::log_debug("simulating %lu cycle(s)", cycles);
+    log_debug("simulating %lu cycle(s)", cycles);
 
     if (wait_per_inst.get() != 0)
         mwr::usleep(wait_per_inst.get());
@@ -74,7 +74,7 @@ bool simple_cpu::insert_breakpoint(u64 addr) {
     if (std::find(m_breakpoints.begin(), m_breakpoints.end(), addr) ==
         m_breakpoints.end())
         m_breakpoints.push_back(addr);
-    mwr::log_debug("breakpoint inserted at addr=0x%08x", (u32)addr);
+    log_debug("breakpoint inserted at addr=0x%08x", (u32)addr);
     return true;
 }
 
@@ -82,7 +82,7 @@ bool simple_cpu::remove_breakpoint(u64 addr) {
     m_breakpoints.erase(
         std::remove(m_breakpoints.begin(), m_breakpoints.end(), addr),
         m_breakpoints.end());
-    mwr::log_debug("breakpoint removed at addr=0x%08x", (u32)addr);
+    log_debug("breakpoint removed at addr=0x%08x", (u32)addr);
     return true;
 }
 
@@ -94,8 +94,8 @@ bool simple_cpu::insert_watchpoint(const vcml::range& addr,
     }
 
     m_watchpoints.emplace_back(addr, prot);
-    mwr::log_debug("watchpoint inserted at 0x%08x-0x%08x", (u32)addr.start,
-                   (u32)addr.end);
+    log_debug("watchpoint inserted at 0x%08x-0x%08x", (u32)addr.start,
+              (u32)addr.end);
     return true;
 }
 
@@ -108,8 +108,8 @@ bool simple_cpu::remove_watchpoint(const vcml::range& addr,
                 return std::get<0>(wp) == addr && std::get<1>(wp) == prot;
             }),
         m_watchpoints.end());
-    mwr::log_debug("watchpoint removed at 0x%08x-0x%08x", (u32)addr.start,
-                   (u32)addr.end);
+    log_debug("watchpoint removed at 0x%08x-0x%08x", (u32)addr.start,
+              (u32)addr.end);
     return true;
 }
 
@@ -119,7 +119,7 @@ bool simple_cpu::virt_to_phys(u64 vaddr, u64& paddr) {
 }
 
 bool simple_cpu::read_reg_dbg(size_t regno, void* buf, size_t len) {
-    mwr::log_debug("debug read of register %lu", regno);
+    log_debug("debug read of register %lu", regno);
     if (regno < m_reg_file.size())
         *(reg_t*)buf = m_reg_file[regno];
     else if (regno == 32)
@@ -131,7 +131,7 @@ bool simple_cpu::read_reg_dbg(size_t regno, void* buf, size_t len) {
 }
 
 bool simple_cpu::write_reg_dbg(size_t regno, const void* buf, size_t len) {
-    mwr::log_debug("debug write of register %lu", regno);
+    log_debug("debug write of register %lu", regno);
     if (regno < m_reg_file.size())
         m_reg_file[regno] = *(reg_t*)buf;
     else if (regno == 32)
@@ -141,19 +141,19 @@ bool simple_cpu::write_reg_dbg(size_t regno, const void* buf, size_t len) {
 }
 
 void simple_cpu::exec_inst() {
-    mwr::log_debug("fetching instruction at pc=0x%08x", m_pc);
+    log_debug("fetching instruction at pc=0x%08x", m_pc);
 
     if (std::find(m_breakpoints.begin(), m_breakpoints.end(), m_pc) !=
         m_breakpoints.end()) {
         notify_breakpoint_hit(m_pc, local_time_stamp());
-        mwr::log_debug("breakpoint hit at pc=0x%08x", m_pc);
+        log_debug("breakpoint hit at pc=0x%08x", m_pc);
         throw cpu_exception(HIT_BREAKPOINT);
     }
 
     inst_t inst = mem_read(m_pc);
     u8 opcode = (inst >> 24) & 0xff;
 
-    mwr::log_debug("executing opcode 0x%02x", opcode);
+    log_debug("executing opcode 0x%02x", opcode);
 
     // simple ISA:
     //  - opcode in bits [31:24]
@@ -211,7 +211,7 @@ mwr::u32 simple_cpu::mem_read(u32 adr, bool trigger_watchpoints) {
             if (std::get<0>(wp).includes(adr) &&
                 std::get<1>(wp) == vcml::vcml_access::VCML_ACCESS_READ) {
                 notify_watchpoint_read(std::get<0>(wp), local_time_stamp());
-                mwr::log_debug("read watchpoint hit at pc=0x%08x", m_pc);
+                log_debug("read watchpoint hit at pc=0x%08x", m_pc);
                 throw cpu_exception(HIT_RWATCHPOINT);
             }
         }
@@ -232,7 +232,7 @@ void simple_cpu::mem_write(u32 adr, reg_t dat) {
         if (std::get<0>(wp).includes(adr) &&
             std::get<1>(wp) == vcml::vcml_access::VCML_ACCESS_WRITE) {
             notify_watchpoint_write(std::get<0>(wp), d, local_time_stamp());
-            mwr::log_debug("write watchpoint hit at pc=0x%08x", m_pc);
+            log_debug("write watchpoint hit at pc=0x%08x", m_pc);
             throw cpu_exception(HIT_WWATCHPOINT);
         }
     }
