@@ -611,3 +611,18 @@ TEST_F(session_test, stop_immediately) {
 
     EXPECT_EQ(sess.reason().reason, VSP_STOP_REASON_USER);
 }
+
+TEST_F(session_test, multi_session) {
+    session sess2("localhost", 4444);
+    while (!sess2.is_connected()) {
+        mwr::usleep(5000);
+        sess2.connect();
+    }
+
+    target* targ = sess.find_target("system.cpu");
+    ASSERT_NE(targ, nullptr);
+    target* targ2 = sess2.find_target("system.cpu");
+    ASSERT_NE(targ2, nullptr);
+
+    sess2.quit();
+}
