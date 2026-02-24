@@ -10,6 +10,8 @@
 
 #include "testing.h"
 
+#include <future>
+
 using namespace testing;
 using namespace vsp;
 
@@ -31,13 +33,15 @@ protected:
         subp.terminate();
     };
 
-    bool wait_for_target() {
+    bool wait_for_target() { return wait_for_target(sess); }
+
+    bool wait_for_target(session& s) {
         constexpr int ms_timeout = 10000;
         auto deadline = std::chrono::steady_clock::now() +
                         std::chrono::milliseconds(ms_timeout);
 
         while (std::chrono::steady_clock::now() < deadline) {
-            if (!sess.running())
+            if (!s.running())
                 return true;
             mwr::usleep(1000);
         }
@@ -623,6 +627,39 @@ TEST_F(session_test, multi_session) {
     ASSERT_NE(targ, nullptr);
     target* targ2 = sess2.find_target("system.cpu");
     ASSERT_NE(targ2, nullptr);
+
+    u64 pc_before = 0;
+    ASSERT_TRUE(targ->pc(pc_before));
+    EXPECT_EQ(pc_before, 0x0);
+
+    u64 pc_before2 = 0;
+    ASSERT_TRUE(targ->pc(pc_before2));
+    EXPECT_EQ(pc_before2, 0x0);
+
+    EXPECT_TRUE(targ->write_vmem(0x0, { 0x0, 0x0, 0x0, 0x0 }));     // nop
+    EXPECT_TRUE(targ->write_vmem(0x4, { 0x0, 0x0, 0x0, 0x0 }));     // nop
+    EXPECT_TRUE(targ->write_vmem(0x8, { 0x0, 0x0, 0x0, 0x0 }));     // nop
+    EXPECT_TRUE(targ->write_vmem(0xc, { 0xf4, 0xff, 0xff, 0x20 })); // back
+
+    auto async_step = std::async(std::launch::async,
+                                 [&]() { targ2->step(6); });
+
+    targ->step(6);
+
+    async_step.get();
+
+    ASSERT_TRUE(wait_for_target(sess));
+    ASSERT_TRUE(wait_for_target(sess2));
+    EXPECT_EQ(sess.reason().reason, VSP_STOP_REASON_STEP_COMPLETE);
+    EXPECT_EQ(sess2.reason().reason, VSP_STOP_REASON_STEP_COMPLETE);
+
+    u64 pc_after = 0;
+    ASSERT_TRUE(targ->pc(pc_after));
+    EXPECT_EQ(pc_after, 0x8);
+
+    u64 pc_after2 = 0;
+    ASSERT_TRUE(targ->pc(pc_after2));
+    EXPECT_EQ(pc_after2, 0x8);
 
     sess2.quit();
 }
