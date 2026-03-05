@@ -16,7 +16,7 @@
 #include <pugixml.hpp>
 
 using std::stoi;
-using std::stoll;
+using std::stoull;
 
 namespace vsp {
 
@@ -173,8 +173,8 @@ void session::update_reason(const string& reason) {
             break;
         }
 
-        newreason.breakpoint.id = stoll(args[1], 0, 10);
-        newreason.step_complete.time = stoll(args[2], 0, 10);
+        newreason.breakpoint.id = stoull(args[1], 0, 10);
+        newreason.step_complete.time = stoull(args[2], 0, 10);
         break;
     }
 
@@ -185,7 +185,7 @@ void session::update_reason(const string& reason) {
         }
 
         newreason.step_complete.tgt = find_target(args[1]);
-        newreason.step_complete.time = stoll(args[2], 0, 10);
+        newreason.step_complete.time = stoull(args[2], 0, 10);
         break;
     }
 
@@ -195,10 +195,10 @@ void session::update_reason(const string& reason) {
             break;
         }
 
-        newreason.rwatchpoint.id = stoll(args[1], 0, 10);
-        newreason.rwatchpoint.addr = stoll(args[2], 0, 16);
-        newreason.rwatchpoint.addr = stoll(args[3], 0, 10);
-        newreason.rwatchpoint.time = stoll(args[4], 0, 10);
+        newreason.rwatchpoint.id = stoull(args[1], 0, 10);
+        newreason.rwatchpoint.addr = stoull(args[2], 0, 16);
+        newreason.rwatchpoint.size = stoull(args[3], 0, 10);
+        newreason.rwatchpoint.time = stoull(args[4], 0, 10);
         break;
     }
 
@@ -208,8 +208,8 @@ void session::update_reason(const string& reason) {
             break;
         }
 
-        newreason.wwatchpoint.id = stoll(args[1], 0, 10);
-        newreason.wwatchpoint.addr = stoll(args[2], 0, 16);
+        newreason.wwatchpoint.id = stoull(args[1], 0, 10);
+        newreason.wwatchpoint.addr = stoull(args[2], 0, 16);
 
         string data = args[3];
         if (data.size() > stop_reason::DATA_SIZE) {
@@ -219,7 +219,7 @@ void session::update_reason(const string& reason) {
 
         strhex(newreason.wwatchpoint.data, stop_reason::DATA_SIZE, data);
 
-        newreason.wwatchpoint.time = stoll(args[4], 0, 10);
+        newreason.wwatchpoint.time = stoull(args[4], 0, 10);
         break;
     }
 
