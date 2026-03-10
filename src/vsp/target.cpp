@@ -146,14 +146,22 @@ vector<u8> target::read_vmem(u64 vaddr, size_t size) {
     return ret;
 }
 
-bool target::write_vmem(u64 vaddr, const vector<u8>& data) {
+size_t target::write_vmem(u64 vaddr, const vector<u8>& data) {
     stringstream ss;
     ss << "vwrite," << m_name << ',' << vaddr;
     for (auto& v : data)
         ss << ',' << static_cast<u32>(v);
 
     auto resp = m_conn.command(ss.str());
-    return connection::check_response(resp, 2);
+    if (!connection::check_response(resp, 2))
+        return 0;
+
+    auto parts = split(resp->at(1), ' ');
+    if (parts.size() != 3)
+        return 0;
+
+    string bytes_written = parts[0];
+    return stoull(bytes_written, nullptr, 10);
 }
 
 bool target::pc(u64& pc) {

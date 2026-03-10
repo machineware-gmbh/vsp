@@ -67,7 +67,7 @@ public:
     bool remove_watchpoint(const watchpoint& wp);
 
     vector<u8> read_vmem(u64 vaddr, size_t size);
-    bool write_vmem(u64 vaddr, const vector<u8>& data);
+    size_t write_vmem(u64 vaddr, const vector<u8>& data);
 
     bool pc(u64& pc);
     list<cpureg>& regs();

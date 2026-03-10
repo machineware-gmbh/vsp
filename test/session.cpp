@@ -252,7 +252,7 @@ TEST_F(session_test, attributes_while_running) {
 
     target* targ = sess.find_target("system.cpu");
     ASSERT_NE(targ, nullptr);
-    EXPECT_TRUE(targ->write_vmem(0x0, inf_loop_inst));
+    EXPECT_NE(targ->write_vmem(0x0, inf_loop_inst), 0);
 
     attribute* attr = cpu->find_attribute("arch");
 
@@ -312,7 +312,7 @@ TEST_F(session_test, commands_while_running) {
 
     target* targ = sess.find_target("system.cpu");
     ASSERT_NE(targ, nullptr);
-    EXPECT_TRUE(targ->write_vmem(0x0, inf_loop_inst));
+    EXPECT_NE(targ->write_vmem(0x0, inf_loop_inst), 0);
 
     sess.run();
     mwr::usleep(1000);
@@ -388,7 +388,7 @@ TEST_F(session_test, register_size) {
 TEST_F(session_test, memory_read) {
     target* targ = sess.find_target("system.cpu");
     ASSERT_NE(targ, nullptr);
-    EXPECT_TRUE(targ->write_vmem(ADDR_IN_BOUND, data1234));
+    EXPECT_NE(targ->write_vmem(ADDR_IN_BOUND, data1234), 0);
 
     // read in bounds
     EXPECT_THAT(targ->read_vmem(ADDR_IN_BOUND, 4), ElementsAre(1, 2, 3, 4));
@@ -400,7 +400,7 @@ TEST_F(session_test, memory_read) {
 TEST_F(session_test, memory_read_while_running) {
     target* targ = sess.find_target("system.cpu");
     ASSERT_NE(targ, nullptr);
-    EXPECT_TRUE(targ->write_vmem(0x0, inf_loop_inst));
+    EXPECT_NE(targ->write_vmem(0x0, inf_loop_inst), 0);
 
     // read while simulation is running
     sess.run();
@@ -414,21 +414,21 @@ TEST_F(session_test, memory_write) {
     ASSERT_NE(targ, nullptr);
 
     // write in bounds
-    EXPECT_TRUE(targ->write_vmem(ADDR_IN_BOUND, data1234));
+    EXPECT_NE(targ->write_vmem(ADDR_IN_BOUND, data1234), 0);
 
     // write out of bounds
-    EXPECT_TRUE(targ->write_vmem(ADDR_OO_BOUND, data1234));
+    EXPECT_EQ(targ->write_vmem(ADDR_OO_BOUND, data1234), 0);
 }
 
 TEST_F(session_test, memory_write_while_running) {
     target* targ = sess.find_target("system.cpu");
     ASSERT_NE(targ, nullptr);
-    EXPECT_TRUE(targ->write_vmem(0x0, inf_loop_inst));
+    EXPECT_NE(targ->write_vmem(0x0, inf_loop_inst), 0);
 
     // write while simulation is running
     sess.run();
     mwr::usleep(1000);
-    EXPECT_FALSE(targ->write_vmem(ADDR_IN_BOUND, data1234));
+    EXPECT_EQ(targ->write_vmem(ADDR_IN_BOUND, data1234), 0);
     sess.stop();
 }
 
@@ -454,7 +454,7 @@ TEST_F(session_test, breakpoint) {
 TEST_F(session_test, breakpoint_while_running) {
     target* targ = sess.find_target("system.cpu");
     ASSERT_NE(targ, nullptr);
-    EXPECT_TRUE(targ->write_vmem(0x0, inf_loop_inst));
+    EXPECT_NE(targ->write_vmem(0x0, inf_loop_inst), 0);
 
     sess.run();
     mwr::usleep(1000);
@@ -479,8 +479,8 @@ TEST_F(session_test, watchpoint) {
 
     vector<u8> inst_load{ 0x20, 0x01, 0x00, 0x11 };  // load from address 0x20
     vector<u8> inst_store{ 0x24, 0x01, 0x00, 0x10 }; // store to address 0x24
-    EXPECT_TRUE(targ->write_vmem(0x0, inst_load));
-    EXPECT_TRUE(targ->write_vmem(0x4, inst_store));
+    EXPECT_EQ(targ->write_vmem(0x0, inst_load), 4);
+    EXPECT_EQ(targ->write_vmem(0x4, inst_store), 4);
 
     sess.run();
     ASSERT_TRUE(wait_for_target());
@@ -502,7 +502,7 @@ TEST_F(session_test, watchpoint) {
 TEST_F(session_test, watchpoint_while_running) {
     target* targ = sess.find_target("system.cpu");
     ASSERT_NE(targ, nullptr);
-    EXPECT_TRUE(targ->write_vmem(0x0, inf_loop_inst));
+    EXPECT_NE(targ->write_vmem(0x0, inf_loop_inst), 0);
 
     sess.run();
     mwr::usleep(1000);
@@ -521,7 +521,7 @@ TEST_F(session_test, virt_to_phys) {
 TEST_F(session_test, virt_to_phys_while_running) {
     target* targ = sess.find_target("system.cpu");
     ASSERT_NE(targ, nullptr);
-    EXPECT_TRUE(targ->write_vmem(0x0, inf_loop_inst));
+    EXPECT_NE(targ->write_vmem(0x0, inf_loop_inst), 0);
 
     sess.run();
     mwr::usleep(1000);
@@ -532,7 +532,7 @@ TEST_F(session_test, virt_to_phys_while_running) {
 TEST_F(session_test, program_counter) {
     target* targ = sess.find_target("system.cpu");
     ASSERT_NE(targ, nullptr);
-    EXPECT_TRUE(targ->write_vmem(0x0, inf_loop_inst));
+    EXPECT_NE(targ->write_vmem(0x0, inf_loop_inst), 0);
     u64 pc;
 
     // get pc while simulation is stopped
@@ -551,10 +551,10 @@ TEST_F(session_test, stepping) {
     ASSERT_NE(targ, nullptr);
     u64 pc;
 
-    EXPECT_TRUE(targ->write_vmem(0x0, { 0x0, 0x0, 0x0, 0x0 }));     // nop
-    EXPECT_TRUE(targ->write_vmem(0x4, { 0x0, 0x0, 0x0, 0x0 }));     // nop
-    EXPECT_TRUE(targ->write_vmem(0x8, { 0x0, 0x0, 0x0, 0x0 }));     // nop
-    EXPECT_TRUE(targ->write_vmem(0xc, { 0xf4, 0xff, 0xff, 0x20 })); // back
+    EXPECT_EQ(targ->write_vmem(0x0, { 0x0, 0x0, 0x0, 0x0 }), 4);     // nop
+    EXPECT_EQ(targ->write_vmem(0x4, { 0x0, 0x0, 0x0, 0x0 }), 4);     // nop
+    EXPECT_EQ(targ->write_vmem(0x8, { 0x0, 0x0, 0x0, 0x0 }), 4);     // nop
+    EXPECT_EQ(targ->write_vmem(0xc, { 0xf4, 0xff, 0xff, 0x20 }), 4); // back
 
     sess.stepi(*targ);
     ASSERT_TRUE(wait_for_target());
@@ -595,7 +595,7 @@ TEST_F(session_test, stop_with_wait) {
     target* targ = sess.find_target("system.cpu");
     ASSERT_NE(targ, nullptr);
 
-    EXPECT_TRUE(targ->write_vmem(0x0, inf_loop_inst));
+    EXPECT_NE(targ->write_vmem(0x0, inf_loop_inst), 0);
 
     sess.run();
     mwr::usleep(1000);
@@ -608,7 +608,7 @@ TEST_F(session_test, stop_immediately) {
     target* targ = sess.find_target("system.cpu");
     ASSERT_NE(targ, nullptr);
 
-    EXPECT_TRUE(targ->write_vmem(0x0, inf_loop_inst));
+    EXPECT_NE(targ->write_vmem(0x0, inf_loop_inst), 0);
 
     sess.run();
     sess.stop();
@@ -636,10 +636,10 @@ TEST_F(session_test, multi_session) {
     ASSERT_TRUE(targ->pc(pc_before2));
     EXPECT_EQ(pc_before2, 0x0);
 
-    EXPECT_TRUE(targ->write_vmem(0x0, { 0x0, 0x0, 0x0, 0x0 }));     // nop
-    EXPECT_TRUE(targ->write_vmem(0x4, { 0x0, 0x0, 0x0, 0x0 }));     // nop
-    EXPECT_TRUE(targ->write_vmem(0x8, { 0x0, 0x0, 0x0, 0x0 }));     // nop
-    EXPECT_TRUE(targ->write_vmem(0xc, { 0xf4, 0xff, 0xff, 0x20 })); // back
+    EXPECT_EQ(targ->write_vmem(0x0, { 0x0, 0x0, 0x0, 0x0 }), 4);     // nop
+    EXPECT_EQ(targ->write_vmem(0x4, { 0x0, 0x0, 0x0, 0x0 }), 4);     // nop
+    EXPECT_EQ(targ->write_vmem(0x8, { 0x0, 0x0, 0x0, 0x0 }), 4);     // nop
+    EXPECT_EQ(targ->write_vmem(0xc, { 0xf4, 0xff, 0xff, 0x20 }), 4); // back
 
     auto async_step = std::async(std::launch::async,
                                  [&]() { targ2->step(6); });
