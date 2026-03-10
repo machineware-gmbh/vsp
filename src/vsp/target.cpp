@@ -27,8 +27,6 @@ static string wp_type_str(watchpoint_type type) {
 target::target(connection& conn, const string& name):
     m_conn(conn), m_name(name), m_regs() {
     update_regs();
-    vector<u8> data(4, 0);
-    m_regs.front().get_value(data);
 }
 
 bool target::update_regs() {
