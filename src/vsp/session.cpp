@@ -89,6 +89,7 @@ session::session(const string& host, u16 port):
     m_conn(host, port),
     m_sysc_version(),
     m_vcml_version(),
+    m_protver(0),
     m_running(false),
     m_reason(),
     m_time_ns(0),
@@ -105,11 +106,15 @@ session::~session() {
 bool session::update_version() {
     optional<vector<string>> resp = m_conn.command("version");
 
-    if (!connection::check_response(resp, 3))
+    if (!(connection::check_response(resp) &&
+          (resp->size() == 3 || resp->size() == 4)))
         return false;
 
     m_sysc_version = resp->at(1);
     m_vcml_version = resp->at(2);
+
+    if (resp->size() > 3)
+        m_protver = stoi(resp->at(3));
 
     return true;
 }
@@ -290,6 +295,10 @@ const string& session::sysc_version() const {
 
 const string& session::vcml_version() const {
     return m_vcml_version;
+}
+
+int session::prot_version() const {
+    return m_protver;
 }
 
 unsigned long long session::time_ns() {

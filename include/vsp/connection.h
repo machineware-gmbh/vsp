@@ -49,6 +49,7 @@ public:
     void disconnect();
 
     optional<vector<string>> command(const string& cmd);
+    static bool check_response(const optional<vector<string>>& resp);
     static bool check_response(const optional<vector<string>>& resp,
                                size_t p_cnt);
 
