@@ -13,9 +13,11 @@
 
 namespace vsp {
 
-cpureg::cpureg(connection& conn, const string& name, target& parent):
-    m_conn(conn), m_name(name), m_size(0), m_parent(parent) {
-    update_size();
+cpureg::cpureg(connection& conn, const string& name, target& parent,
+               size_t size):
+    m_conn(conn), m_name(name), m_size(size), m_parent(parent) {
+    if (m_size == 0)
+        update_size();
 }
 
 bool cpureg::update_size() {
