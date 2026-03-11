@@ -17,6 +17,7 @@
 #include <vsp.h>
 
 namespace cli {
+using mwr::termcolors;
 
 class session : public cli
 {
@@ -37,7 +38,8 @@ private:
     bool handle_kill(const string& args);
     bool handle_exec(const string& args);
 
-    void print_report_line(const string& kind, const string& value);
+    template <typename T>
+    void print_report_line(const string& kind, T value);
     bool print();
 
 protected:
@@ -52,6 +54,13 @@ public:
     session(const session&) = delete;
     session& operator=(const session&) = delete;
 };
+
+template <typename T>
+void session::print_report_line(const string& kind, T value) {
+    cout << termcolors::BOLD << termcolors::WHITE << std::left << std::setw(16)
+         << kind << termcolors::CLEAR << std::left << termcolors::WHITE
+         << value << termcolors::CLEAR << endl;
+}
 
 } // namespace cli
 
