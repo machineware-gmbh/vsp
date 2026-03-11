@@ -155,10 +155,11 @@ optional<vector<string>> connection::command(const string& cmd) {
 
 bool connection::check_response(const optional<vector<string>>& resp,
                                 size_t p_cnt) {
-    if (!resp)
-        return false;
+    return check_response(resp) && resp->size() == p_cnt;
+}
 
-    if (resp->size() != p_cnt)
+bool connection::check_response(const optional<vector<string>>& resp) {
+    if (!resp)
         return false;
 
     if (resp->at(0) != "OK")
