@@ -16,6 +16,7 @@
 #include <mutex>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <filesystem>
 
@@ -46,6 +47,7 @@ using std::unordered_map;
 
 using std::string;
 using std::stringstream;
+using std::string_view;
 using std::to_string;
 using std::ostream;
 using std::count;
