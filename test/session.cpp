@@ -600,7 +600,7 @@ TEST_F(session_test, stepping) {
     sess.stepi(*targ);
     ASSERT_TRUE(wait_for_target());
 
-    EXPECT_EQ(sess.reason().reason, VSP_STOP_REASON_STEP_COMPLETE);
+    EXPECT_EQ(sess.reason().reason, VSP_STOP_REASON_TARGET_STEP_COMPLETE);
     EXPECT_TRUE(targ->pc(pc));
     EXPECT_EQ(pc, 0x4);
 
@@ -620,7 +620,9 @@ TEST_F(session_test, stepping) {
     ASSERT_NE(wait_per_inst, nullptr);
     wait_per_inst->set(500'000ull);
     targ->step(3);
+    EXPECT_TRUE(sess.running());
     ASSERT_TRUE(wait_for_target());
+    EXPECT_FALSE(sess.running());
     EXPECT_TRUE(targ->pc(pc));
     EXPECT_EQ(pc, 0x0);
 
@@ -630,6 +632,25 @@ TEST_F(session_test, stepping) {
     ASSERT_TRUE(wait_for_target());
     EXPECT_TRUE(targ->pc(pc));
     EXPECT_EQ(pc, 0x4);
+
+    // step quantum blocking
+    unsigned long long st_ns = sess.time_ns();
+    unsigned long long quantum_ns = 2;
+    sess.set_quantum(quantum_ns);
+    EXPECT_EQ(sess.quantum_ns(), quantum_ns);
+    sess.step(true);
+    EXPECT_FALSE(sess.running());
+    EXPECT_EQ(sess.reason().reason, VSP_STOP_REASON_STEP_COMPLETE);
+    EXPECT_EQ(sess.time_ns(), st_ns + quantum_ns);
+
+    // step quantum non-blocking
+    st_ns = sess.time_ns();
+    sess.step(false);
+    EXPECT_TRUE(sess.running());
+    ASSERT_TRUE(wait_for_target());
+    EXPECT_FALSE(sess.running());
+    EXPECT_EQ(sess.reason().reason, VSP_STOP_REASON_STEP_COMPLETE);
+    EXPECT_EQ(sess.time_ns(), st_ns + quantum_ns);
 }
 
 TEST_F(session_test, stop_with_wait) {
@@ -691,8 +712,8 @@ TEST_F(session_test, multi_session) {
 
     ASSERT_TRUE(wait_for_target(sess));
     ASSERT_TRUE(wait_for_target(sess2));
-    EXPECT_EQ(sess.reason().reason, VSP_STOP_REASON_STEP_COMPLETE);
-    EXPECT_EQ(sess2.reason().reason, VSP_STOP_REASON_STEP_COMPLETE);
+    EXPECT_EQ(sess.reason().reason, VSP_STOP_REASON_TARGET_STEP_COMPLETE);
+    EXPECT_EQ(sess2.reason().reason, VSP_STOP_REASON_TARGET_STEP_COMPLETE);
 
     u64 pc_after = 0;
     ASSERT_TRUE(targ->pc(pc_after));
