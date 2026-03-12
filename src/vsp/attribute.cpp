@@ -52,46 +52,22 @@ string attribute::get_str() {
     return ss.str();
 }
 
-void attribute::set(const string& val) {
+void attribute::set_escaped(const string& val) {
     auto resp = m_conn.command("seta," + hierarchy_name() + "," + val);
     MWR_REPORT_ON(!connection::check_response(resp, 1), "%s: set failed (%s)",
                   name(), response_get_error(resp).c_str());
 }
 
+void attribute::set(const char* val) {
+    set(string(val));
+}
+
+void attribute::set(const string& val) {
+    set_escaped(mwr::escape(val, ","));
+}
+
 void attribute::set(bool val) {
-    set(string(val ? "true" : "false"));
-}
-
-void attribute::set(int val) {
-    set(to_string(val));
-}
-
-void attribute::set(long val) {
-    set(to_string(val));
-}
-
-void attribute::set(long long val) {
-    set(to_string(val));
-}
-
-void attribute::set(unsigned val) {
-    set(to_string(val));
-}
-
-void attribute::set(unsigned long val) {
-    set(to_string(val));
-}
-
-void attribute::set(unsigned long long val) {
-    set(to_string(val));
-}
-
-void attribute::set(float val) {
-    set(to_string(val));
-}
-
-void attribute::set(double val) {
-    set(to_string(val));
+    set_escaped(string(val ? "true" : "false"));
 }
 
 } // namespace vsp
