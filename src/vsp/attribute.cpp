@@ -31,7 +31,7 @@ optional<vector<string>> attribute::get() {
 
     optional<vector<string>> resp = m_conn.command("geta," + hierarchy_name());
 
-    if (!connection::check_response(resp, m_count + 1))
+    if (!connection::check_response(resp, 2))
         return nullopt;
 
     resp->erase(resp->begin());

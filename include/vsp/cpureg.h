@@ -39,7 +39,7 @@ public:
 
     size_t size() const;
     bool get_value(vector<u8>& ret);
-    bool set_value(const vector<u8>& ret);
+    bool set_value(const vector<u8>& val);
     const char* name() const;
 };
 
