@@ -53,10 +53,7 @@ vector<string> connection::decompose(const string& s) {
     size_t i = 0;
 
     while (i < s.size()) {
-        if (s[i] == '\\' && i < s.size() - 1) {
-            b += s[i + 1];
-            i += 2;
-        } else if (s[i] == ',') {
+        if (s[i] == ',') {
             l.push_back(std::move(b));
             b = string();
             ++i;

@@ -36,6 +36,7 @@ public:
     vcml::property<long double> long_double_property;
     vcml::property<std::vector<i32>> i32_vector_property;
     vcml::property<std::vector<string>> string_vector_property;
+    vcml::property<string> string_property;
 
     simple_cpu(const sc_core::sc_module_name& nm);
 
