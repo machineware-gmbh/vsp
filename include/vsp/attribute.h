@@ -37,17 +37,42 @@ public:
 
     optional<vector<string>> get();
     string get_str();
+
     void set(const string& val);
-    void set(bool val);
-    void set(int val);
-    void set(long val);
-    void set(long long val);
-    void set(unsigned val);
-    void set(unsigned long val);
-    void set(unsigned long long val);
-    void set(float val);
-    void set(double val);
+
+    template <typename T>
+    void set(T val);
+
+    template <typename T>
+    void set(const vector<T>& val);
 };
+
+template <>
+void attribute::set<const char*>(const char* val);
+
+template <>
+void attribute::set<bool>(bool val);
+
+template <typename T>
+void attribute::set(T val) {
+    set(to_string(val));
+}
+
+template <typename T>
+void attribute::set(const vector<T>& val) {
+    MWR_ERROR_ON(val.size() != m_count, "size missmatch");
+
+    if (val.empty())
+        return;
+
+    std::stringstream ss;
+
+    ss << val[0];
+    for (size_t i = 1; i < val.size(); ++i)
+        ss << ',' << val[i];
+
+    set(ss.str());
+}
 
 } // namespace vsp
 

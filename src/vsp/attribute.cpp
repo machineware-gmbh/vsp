@@ -58,40 +58,14 @@ void attribute::set(const string& val) {
                   name(), response_get_error(resp).c_str());
 }
 
-void attribute::set(bool val) {
+template <>
+void attribute::set<const char*>(const char* val) {
+    set(string(val));
+}
+
+template <>
+void attribute::set<bool>(bool val) {
     set(string(val ? "true" : "false"));
-}
-
-void attribute::set(int val) {
-    set(to_string(val));
-}
-
-void attribute::set(long val) {
-    set(to_string(val));
-}
-
-void attribute::set(long long val) {
-    set(to_string(val));
-}
-
-void attribute::set(unsigned val) {
-    set(to_string(val));
-}
-
-void attribute::set(unsigned long val) {
-    set(to_string(val));
-}
-
-void attribute::set(unsigned long long val) {
-    set(to_string(val));
-}
-
-void attribute::set(float val) {
-    set(to_string(val));
-}
-
-void attribute::set(double val) {
-    set(to_string(val));
 }
 
 } // namespace vsp
