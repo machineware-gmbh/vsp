@@ -49,13 +49,13 @@ bool cpureg::get_value(vector<u8>& ret) {
     return true;
 }
 
-bool cpureg::set_value(const vector<u8>& ret) {
-    if (ret.size() > m_size)
+bool cpureg::set_value(const vector<u8>& val) {
+    if (val.size() > m_size)
         return false;
 
     stringstream ss;
     ss << "setr," << m_parent.name() << ',' << m_name;
-    for (auto& v : ret)
+    for (auto& v : val)
         ss << ',' << static_cast<u32>(v);
 
     auto resp = m_conn.command(ss.str());

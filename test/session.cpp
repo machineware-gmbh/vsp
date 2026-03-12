@@ -244,6 +244,47 @@ TEST_F(session_test, attribute_types) {
     attr->set(7.125);
     EXPECT_EQ(attr->type(), "unknown"); // currently not supported by VCML
     EXPECT_EQ(attr->get_str(), "7.125");
+
+    attr = sess.find_attribute("system.cpu.i32_vector_property");
+    ASSERT_NE(attr, nullptr);
+    vector<i32> i32_data(attr->count());
+    for (size_t i = 0; i < i32_data.size(); ++i)
+        i32_data[i] = static_cast<i32>(i);
+    attr->set(i32_data);
+    EXPECT_EQ(attr->get_str(), mwr::join(i32_data, ' '));
+
+    attr = sess.find_attribute("system.cpu.string_vector_property");
+    ASSERT_NE(attr, nullptr);
+    vector<string> string_data(attr->count());
+    for (size_t i = 0; i < string_data.size(); ++i)
+        string_data[i] = mwr::mkstr("val1: %zu", i);
+    attr->set(string_data);
+    EXPECT_EQ(attr->get_str(), mwr::join(string_data, ' '));
+
+    attr = sess.find_attribute("system.cpu.string_property");
+    ASSERT_NE(attr, nullptr);
+    attr->set("test");
+    EXPECT_EQ(attr->type(), "string");
+    EXPECT_EQ(attr->get_str(), "test");
+
+    // test escaping
+    attr->set("$");
+    EXPECT_EQ(attr->get_str(), "$");
+
+    attr->set("#");
+    EXPECT_EQ(attr->get_str(), "#");
+
+    attr->set("*");
+    EXPECT_EQ(attr->get_str(), "*");
+
+    attr->set("}");
+    EXPECT_EQ(attr->get_str(), "}");
+
+    attr->set("$#*}");
+    EXPECT_EQ(attr->get_str(), "$#*}");
+
+    attr->set("\\n");
+    EXPECT_EQ(attr->get_str(), "\\n");
 }
 
 TEST_F(session_test, attributes_while_running) {

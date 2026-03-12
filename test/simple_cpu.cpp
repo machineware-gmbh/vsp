@@ -22,7 +22,8 @@ simple_cpu::simple_cpu(const sc_core::sc_module_name& nm):
     double_property("double_property", 0.),
     long_double_property("long_double_property", 0.l),
     string_vector_property("string_vector_property", { "", "", "" }),
-    i32_vector_property("i32_vector_property", { 0, 0, 0 }) {
+    i32_vector_property("i32_vector_property", { 0, 0, 0 }),
+    string_property("string_property", "") {
     set_little_endian();
 
     define_cpureg_r(0, reg_name(0), sizeof(reg_t));
