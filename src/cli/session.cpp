@@ -31,10 +31,9 @@ session::session(shared_ptr<vsp::session> s):
     register_handler(
         &session::handle_list, "list",
         "displays the module hierarchy onwards from current module", "ls");
-    register_handler(&session::handle_quit, "quit", "disconnect from session",
-                     "q");
-    register_handler(&session::handle_detach, "detach", "terminate session",
-                     "d");
+    register_handler(&session::handle_quit, "quit", "terminate session", "q");
+    register_handler(&session::handle_detach, "detach",
+                     "disconnect from session", "d");
     register_handler(&session::handle_read, "read",
                      "reads the given <attribute>", "r");
     register_handler(&session::handle_run, "run", "continues simulation", "c");
