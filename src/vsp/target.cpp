@@ -171,6 +171,39 @@ size_t target::write_vmem(u64 vaddr, const vector<u8>& data) {
     return stoull(bytes_written, nullptr, 10);
 }
 
+vector<u8> target::read_pmem(u64 paddr, size_t size) {
+    vector<u8> ret;
+    string cmd = "pread," + m_name + "," + to_string(paddr) + ',' +
+                 to_string(size);
+    auto resp = m_conn.command(cmd);
+    if (!connection::check_response(resp, size + 1))
+        return ret;
+
+    ret.reserve(size);
+    for (size_t i = 1; i < resp->size(); ++i)
+        ret.emplace_back((u8)stoul(resp->at(i), nullptr, 16));
+
+    return ret;
+}
+
+size_t target::write_pmem(u64 paddr, const vector<u8>& data) {
+    stringstream ss;
+    ss << "pwrite," << m_name << ',' << paddr;
+    for (auto& v : data)
+        ss << ',' << static_cast<u32>(v);
+
+    auto resp = m_conn.command(ss.str());
+    if (!connection::check_response(resp, 2))
+        return 0;
+
+    auto parts = split(resp->at(1), ' ');
+    if (parts.size() != 3)
+        return 0;
+
+    string bytes_written = parts[0];
+    return stoull(bytes_written, nullptr, 10);
+}
+
 bool target::pc(u64& pc) {
     cpureg* pc_reg = nullptr;
 
