@@ -37,8 +37,17 @@ bool target::update_regs() {
     if (resp->at(0) != "OK")
         return false;
 
-    for (size_t i = 1; i < resp->size(); ++i)
-        m_regs.emplace_back(m_conn, resp->at(i), *this);
+    for (size_t i = 1; i < resp->size(); ++i) {
+        size_t regsize = 0;
+        const string& regname = resp->at(i);
+
+        size_t colon_pos = regname.find_last_of(':');
+        if (colon_pos != string::npos)
+            regsize = stoi(regname.substr(colon_pos + 1));
+
+        m_regs.emplace_back(m_conn, regname.substr(0, colon_pos), *this,
+                            regsize);
+    }
 
     return true;
 }
