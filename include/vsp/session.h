@@ -66,6 +66,7 @@ private:
     connection m_conn;
     string m_sysc_version;
     string m_vcml_version;
+    int m_protover;
     bool m_running;
     stop_reason m_reason;
     unsigned long long m_time_ns;
@@ -94,6 +95,7 @@ public:
     bool running();
     const string& sysc_version() const;
     const string& vcml_version() const;
+    int proto_version() const;
     unsigned long long time_ns();
     unsigned long long cycle();
     const stop_reason& reason() const { return m_reason; }

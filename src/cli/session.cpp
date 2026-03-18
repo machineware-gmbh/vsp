@@ -14,8 +14,6 @@
 
 namespace cli {
 
-using mwr::termcolors;
-
 session::session(shared_ptr<vsp::session> s):
     m_session(std::move(s)), m_current_mod(nullptr) {
     if (!m_session->is_connected())
@@ -124,16 +122,11 @@ bool session::handle_step(const string& args) {
     return true;
 }
 
-void session::print_report_line(const string& kind, const string& value) {
-    cout << termcolors::BOLD << termcolors::WHITE << std::left << std::setw(16)
-         << kind << termcolors::CLEAR << std::left << termcolors::WHITE
-         << value << termcolors::CLEAR << endl;
-}
-
 bool session::handle_info(const string& args) {
     print_report_line("Simulation Host", m_session->peer());
     print_report_line("VCML Version", m_session->vcml_version());
     print_report_line("SystemC Version", m_session->sysc_version());
+    print_report_line("Proto. Version", m_session->proto_version());
     print_report_line("Simulation Time",
                       mwr::mkstr("%.9fs", m_session->time_ns() / 1e9));
     print_report_line("Delta Cycle", to_string(m_session->cycle()));
