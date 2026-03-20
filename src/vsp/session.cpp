@@ -81,6 +81,17 @@ string stop_reason_str(const stop_reason& reason) {
     }
 }
 
+string stop_mode_str(stop_mode_t mode) {
+    switch (mode) {
+    case VSP_STOP_MODE_SOFT:
+        return "soft";
+    case VSP_STOP_MODE_HARD:
+        return "hard";
+    default:
+        return "<unknown>";
+    }
+}
+
 ostream& operator<<(ostream& out, const stop_reason& reason) {
     return out << stop_reason_str(reason);
 }
@@ -179,7 +190,7 @@ void session::update_reason(const string& reason) {
         }
 
         newreason.breakpoint.id = stoull(args[1], 0, 10);
-        newreason.step_complete.time = stoull(args[2], 0, 10);
+        newreason.breakpoint.time = stoull(args[2], 0, 10);
         break;
     }
 
@@ -396,6 +407,10 @@ void session::stop() {
     update_status();
     if (m_running)
         m_conn.command("stop");
+}
+
+void session::set_stop_mode(stop_mode_t mode) {
+    m_conn.command("setsm," + stop_mode_str(mode));
 }
 
 void session::dump() {
