@@ -25,7 +25,12 @@ enum stop_reason_t {
     VSP_STOP_REASON_STEP_COMPLETE,
     VSP_STOP_REASON_RWATCHPOINT,
     VSP_STOP_REASON_WWATCHPOINT,
-    VSP_STOP_REASON_COUNT
+    VSP_STOP_REASON_COUNT,
+};
+
+enum stop_mode_t {
+    VSP_STOP_MODE_SOFT = 0,
+    VSP_STOP_MODE_HARD,
 };
 
 namespace vsp {
@@ -109,6 +114,7 @@ public:
     void stepi(const target& t);
     void run();
     void stop();
+    void set_stop_mode(stop_mode_t mode);
 
     void dump();
     module* find_module(const string& name = "");
