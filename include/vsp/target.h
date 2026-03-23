@@ -69,6 +69,9 @@ public:
     vector<u8> read_vmem(u64 vaddr, size_t size);
     size_t write_vmem(u64 vaddr, const vector<u8>& data);
 
+    vector<u8> read_pmem(u64 paddr, size_t size);
+    size_t write_pmem(u64 paddr, const vector<u8>& data);
+
     bool pc(u64& pc);
     list<cpureg>& regs();
     cpureg* find_reg(const string& name);

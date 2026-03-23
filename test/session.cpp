@@ -432,6 +432,31 @@ TEST_F(session_test, memory_write_while_running) {
     sess.stop();
 }
 
+TEST_F(session_test, pmem_read_write) {
+    target* targ = sess.find_target("system.cpu");
+    ASSERT_NE(targ, nullptr);
+
+    u64 in_bound_phys = targ->virt_to_phys(ADDR_IN_BOUND);
+    u64 oo_bound_phys = targ->virt_to_phys(ADDR_OO_BOUND);
+
+    // write in bounds
+    EXPECT_NE(targ->write_pmem(in_bound_phys, data1234), 0);
+    EXPECT_THAT(targ->read_pmem(in_bound_phys, 4), ElementsAre(1, 2, 3, 4));
+
+    // write out of bounds
+    EXPECT_EQ(targ->write_pmem(oo_bound_phys, data1234), 0);
+    EXPECT_THAT(targ->read_pmem(oo_bound_phys, 4), ElementsAre(0, 0, 0, 0));
+
+    EXPECT_NE(targ->write_pmem(0x0, inf_loop_inst), 0);
+
+    // write while simulation is running
+    sess.run();
+    mwr::usleep(1000);
+    EXPECT_EQ(targ->read_pmem(in_bound_phys, 4).size(), 0);
+    EXPECT_EQ(targ->write_pmem(oo_bound_phys, data1234), 0);
+    sess.stop();
+}
+
 TEST_F(session_test, breakpoint) {
     target* targ = sess.find_target("system.cpu");
     ASSERT_NE(targ, nullptr);
