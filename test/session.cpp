@@ -244,6 +244,47 @@ TEST_F(session_test, attribute_types) {
     attr->set(7.125);
     EXPECT_EQ(attr->type(), "unknown"); // currently not supported by VCML
     EXPECT_EQ(attr->get_str(), "7.125");
+
+    attr = sess.find_attribute("system.cpu.i32_vector_property");
+    ASSERT_NE(attr, nullptr);
+    vector<i32> i32_data(attr->count());
+    for (size_t i = 0; i < i32_data.size(); ++i)
+        i32_data[i] = static_cast<i32>(i);
+    attr->set(i32_data);
+    EXPECT_EQ(attr->get_str(), mwr::join(i32_data, ' '));
+
+    attr = sess.find_attribute("system.cpu.string_vector_property");
+    ASSERT_NE(attr, nullptr);
+    vector<string> string_data(attr->count());
+    for (size_t i = 0; i < string_data.size(); ++i)
+        string_data[i] = mwr::mkstr("val1: %zu", i);
+    attr->set(string_data);
+    EXPECT_EQ(attr->get_str(), mwr::join(string_data, ' '));
+
+    attr = sess.find_attribute("system.cpu.string_property");
+    ASSERT_NE(attr, nullptr);
+    attr->set("test");
+    EXPECT_EQ(attr->type(), "string");
+    EXPECT_EQ(attr->get_str(), "test");
+
+    // test escaping
+    attr->set("$");
+    EXPECT_EQ(attr->get_str(), "$");
+
+    attr->set("#");
+    EXPECT_EQ(attr->get_str(), "#");
+
+    attr->set("*");
+    EXPECT_EQ(attr->get_str(), "*");
+
+    attr->set("}");
+    EXPECT_EQ(attr->get_str(), "}");
+
+    attr->set("$#*}");
+    EXPECT_EQ(attr->get_str(), "$#*}");
+
+    attr->set("\\n");
+    EXPECT_EQ(attr->get_str(), "\\n");
 }
 
 TEST_F(session_test, attributes_while_running) {
@@ -584,7 +625,7 @@ TEST_F(session_test, stepping) {
     sess.stepi(*targ);
     ASSERT_TRUE(wait_for_target());
 
-    EXPECT_EQ(sess.reason().reason, VSP_STOP_REASON_STEP_COMPLETE);
+    EXPECT_EQ(sess.reason().reason, VSP_STOP_REASON_TARGET_STEP_COMPLETE);
     EXPECT_TRUE(targ->pc(pc));
     EXPECT_EQ(pc, 0x4);
 
@@ -604,7 +645,9 @@ TEST_F(session_test, stepping) {
     ASSERT_NE(wait_per_inst, nullptr);
     wait_per_inst->set(500'000ull);
     targ->step(3);
+    EXPECT_TRUE(sess.running());
     ASSERT_TRUE(wait_for_target());
+    EXPECT_FALSE(sess.running());
     EXPECT_TRUE(targ->pc(pc));
     EXPECT_EQ(pc, 0x0);
 
@@ -614,6 +657,25 @@ TEST_F(session_test, stepping) {
     ASSERT_TRUE(wait_for_target());
     EXPECT_TRUE(targ->pc(pc));
     EXPECT_EQ(pc, 0x4);
+
+    // step quantum blocking
+    unsigned long long st_ns = sess.time_ns();
+    unsigned long long quantum_ns = 2;
+    sess.set_quantum(quantum_ns);
+    EXPECT_EQ(sess.quantum_ns(), quantum_ns);
+    sess.step(true);
+    EXPECT_FALSE(sess.running());
+    EXPECT_EQ(sess.reason().reason, VSP_STOP_REASON_STEP_COMPLETE);
+    EXPECT_EQ(sess.time_ns(), st_ns + quantum_ns);
+
+    // step quantum non-blocking
+    st_ns = sess.time_ns();
+    sess.step(false);
+    EXPECT_TRUE(sess.running());
+    ASSERT_TRUE(wait_for_target());
+    EXPECT_FALSE(sess.running());
+    EXPECT_EQ(sess.reason().reason, VSP_STOP_REASON_STEP_COMPLETE);
+    EXPECT_EQ(sess.time_ns(), st_ns + quantum_ns);
 }
 
 TEST_F(session_test, stop_with_wait) {
@@ -675,8 +737,8 @@ TEST_F(session_test, multi_session) {
 
     ASSERT_TRUE(wait_for_target(sess));
     ASSERT_TRUE(wait_for_target(sess2));
-    EXPECT_EQ(sess.reason().reason, VSP_STOP_REASON_STEP_COMPLETE);
-    EXPECT_EQ(sess2.reason().reason, VSP_STOP_REASON_STEP_COMPLETE);
+    EXPECT_EQ(sess.reason().reason, VSP_STOP_REASON_TARGET_STEP_COMPLETE);
+    EXPECT_EQ(sess2.reason().reason, VSP_STOP_REASON_TARGET_STEP_COMPLETE);
 
     u64 pc_after = 0;
     ASSERT_TRUE(targ->pc(pc_after));

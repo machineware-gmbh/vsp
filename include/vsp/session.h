@@ -22,6 +22,7 @@ enum stop_reason_t {
     VSP_STOP_REASON_UNKNOWN = 0,
     VSP_STOP_REASON_USER,
     VSP_STOP_REASON_BREAKPOINT,
+    VSP_STOP_REASON_TARGET_STEP_COMPLETE,
     VSP_STOP_REASON_STEP_COMPLETE,
     VSP_STOP_REASON_RWATCHPOINT,
     VSP_STOP_REASON_WWATCHPOINT,
@@ -46,7 +47,7 @@ struct stop_reason {
         struct {
             target* tgt;
             u64 time;
-        } step_complete;
+        } target_step_complete;
         struct {
             u64 id;
             u64 addr;
@@ -62,7 +63,7 @@ struct stop_reason {
     };
 };
 
-string stop_reason_str(const stop_reason& reason);
+string_view stop_reason_str(const stop_reason& reason);
 ostream& operator<<(ostream& out, const stop_reason& reason);
 
 class session
@@ -76,7 +77,6 @@ private:
     stop_reason m_reason;
     unsigned long long m_time_ns;
     unsigned long long m_cycle;
-    int m_quantum_ns;
     module* m_mods;
     list<target> m_targets;
 
@@ -84,7 +84,6 @@ private:
 
     void init();
     bool update_version();
-    bool update_quantum();
     bool update_status();
     bool update_modules();
     void update_reason(const string& reason);
@@ -103,6 +102,8 @@ public:
     int proto_version() const;
     unsigned long long time_ns();
     unsigned long long cycle();
+    unsigned long long quantum_ns();
+    void set_quantum(unsigned long long ns);
     const stop_reason& reason() const { return m_reason; }
 
     bool is_connected() const;

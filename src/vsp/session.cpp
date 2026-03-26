@@ -49,36 +49,30 @@ static void strhex(u8* buffer, size_t buflen, const string& bytes) {
     }
 }
 
+static const unordered_map<std::string_view, stop_reason_t> VSP_STOP_REASONS{
+    { "user", VSP_STOP_REASON_USER },
+    { "breakpoint", VSP_STOP_REASON_BREAKPOINT },
+    { "target", VSP_STOP_REASON_TARGET_STEP_COMPLETE },
+    { "step", VSP_STOP_REASON_STEP_COMPLETE },
+    { "rwatchpoint", VSP_STOP_REASON_RWATCHPOINT },
+    { "wwatchpoint", VSP_STOP_REASON_WWATCHPOINT },
+    { "<unknown>", VSP_STOP_REASON_UNKNOWN },
+};
+
 static stop_reason_t stop_reason_from_string(const string& s) {
-    if (s == "user")
-        return VSP_STOP_REASON_USER;
-    if (s == "breakpoint")
-        return VSP_STOP_REASON_BREAKPOINT;
-    if (s == "target")
-        return VSP_STOP_REASON_STEP_COMPLETE;
-    if (s == "rwatchpoint")
-        return VSP_STOP_REASON_RWATCHPOINT;
-    if (s == "wwatchpoint")
-        return VSP_STOP_REASON_WWATCHPOINT;
-    return VSP_STOP_REASON_UNKNOWN;
+    if (!VSP_STOP_REASONS.count(s))
+        return VSP_STOP_REASON_UNKNOWN;
+
+    return VSP_STOP_REASONS.at(s);
 }
 
-string stop_reason_str(const stop_reason& reason) {
-    switch (reason.reason) {
-    case VSP_STOP_REASON_USER:
-        return "user";
-    case VSP_STOP_REASON_STEP_COMPLETE:
-        return "target";
-    case VSP_STOP_REASON_BREAKPOINT:
-        return "breakpoint";
-    case VSP_STOP_REASON_RWATCHPOINT:
-        return "rwatchpoint";
-    case VSP_STOP_REASON_WWATCHPOINT:
-        return "wwatchpoint";
-    case VSP_STOP_REASON_UNKNOWN:
-    default:
-        return "<unknown>";
+string_view stop_reason_str(const stop_reason& reason) {
+    for (auto& r : VSP_STOP_REASONS) {
+        if (r.second == reason.reason)
+            return r.first;
     }
+
+    return "<unknown>";
 }
 
 string stop_mode_str(stop_mode_t mode) {
@@ -105,7 +99,6 @@ session::session(const string& host, u16 port):
     m_reason(),
     m_time_ns(0),
     m_cycle(0),
-    m_quantum_ns(0),
     m_mods(nullptr),
     m_targets() {
 }
@@ -126,17 +119,6 @@ bool session::update_version() {
 
     if (resp->size() > 3)
         m_protover = stoi(resp->at(3));
-
-    return true;
-}
-
-bool session::update_quantum() {
-    optional<vector<string>> resp = m_conn.command("getq");
-
-    if (!connection::check_response(resp, 2))
-        return false;
-
-    m_quantum_ns = stoi(resp->at(1));
 
     return true;
 }
@@ -178,6 +160,7 @@ void session::update_reason(const string& reason) {
         newreason.reason = stop_reason_from_string(args[0]);
 
     switch (newreason.reason) {
+    case VSP_STOP_REASON_STEP_COMPLETE:
     case VSP_STOP_REASON_USER: {
         // nothing to do
         break;
@@ -194,14 +177,14 @@ void session::update_reason(const string& reason) {
         break;
     }
 
-    case VSP_STOP_REASON_STEP_COMPLETE: {
+    case VSP_STOP_REASON_TARGET_STEP_COMPLETE: {
         if (args.size() != 3) {
             newreason.reason = VSP_STOP_REASON_UNKNOWN;
             break;
         }
 
-        newreason.step_complete.tgt = find_target(args[1]);
-        newreason.step_complete.time = stoull(args[2], 0, 10);
+        newreason.target_step_complete.tgt = find_target(args[1]);
+        newreason.target_step_complete.time = stoull(args[2], 0, 10);
         break;
     }
 
@@ -227,7 +210,7 @@ void session::update_reason(const string& reason) {
         newreason.wwatchpoint.id = stoull(args[1], 0, 10);
         newreason.wwatchpoint.addr = stoull(args[2], 0, 16);
 
-        string data = args[3];
+        const string& data = args[3];
         if (data.size() > stop_reason::DATA_SIZE) {
             log_error("wwatchpoint: written %lu bytes (>%lu), data dropped",
                       data.size(), stop_reason::DATA_SIZE);
@@ -322,6 +305,21 @@ unsigned long long session::cycle() {
     return m_cycle;
 }
 
+unsigned long long session::quantum_ns() {
+    optional<vector<string>> resp = m_conn.command("getq");
+
+    if (!connection::check_response(resp, 2))
+        return 0;
+
+    return stoi(resp->at(1));
+}
+
+void session::set_quantum(unsigned long long ns) {
+    auto resp = m_conn.command("setq," + to_string(ns));
+    MWR_REPORT_ON(!connection::check_response(resp, 1),
+                  "set quantum failed (%s)", response_get_error(resp).c_str());
+}
+
 void session::connect() {
     if (m_conn.is_connected())
         return;
@@ -342,7 +340,6 @@ void session::connect() {
     while (running())
         mwr::cpu_yield();
 
-    update_quantum();
     update_modules();
 }
 
@@ -368,7 +365,7 @@ void session::quit() {
 }
 
 void session::step(bool block) {
-    step(m_quantum_ns, block);
+    step(quantum_ns(), block);
 }
 
 void session::step(u64 ns, bool block) {
