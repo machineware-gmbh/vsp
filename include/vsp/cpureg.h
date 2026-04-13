@@ -26,7 +26,7 @@ private:
     size_t m_size;
     target& m_parent;
 
-    bool update_size();
+    void update_size();
 
 public:
     explicit cpureg(connection& conn, const string& name, target& m_parent,
@@ -38,8 +38,8 @@ public:
     cpureg& operator=(const cpureg&) = delete;
 
     size_t size() const;
-    bool get_value(vector<u8>& ret);
-    bool set_value(const vector<u8>& val);
+    void get_value(vector<u8>& ret);
+    void set_value(const vector<u8>& val);
     const char* name() const;
 };
 

@@ -42,7 +42,7 @@ private:
     string m_name;
     list<cpureg> m_regs;
 
-    bool update_regs();
+    void update_regs();
 
 public:
     explicit target(connection& conn, const string& name);
@@ -59,12 +59,11 @@ public:
 
     u64 virt_to_phys(u64 va);
 
-    optional<breakpoint> insert_breakpoint(u64 addr);
-    bool remove_breakpoint(const breakpoint& bp);
+    breakpoint insert_breakpoint(u64 addr);
+    void remove_breakpoint(const breakpoint& bp);
 
-    optional<watchpoint> insert_watchpoint(u64 base, u64 size,
-                                           watchpoint_type type);
-    bool remove_watchpoint(const watchpoint& wp);
+    watchpoint insert_watchpoint(u64 base, u64 size, watchpoint_type type);
+    void remove_watchpoint(const watchpoint& wp);
 
     vector<u8> read_vmem(u64 vaddr, size_t size);
     size_t write_vmem(u64 vaddr, const vector<u8>& data);
@@ -72,7 +71,7 @@ public:
     vector<u8> read_pmem(u64 paddr, size_t size);
     size_t write_pmem(u64 paddr, const vector<u8>& data);
 
-    bool pc(u64& pc);
+    u64 get_pc();
     list<cpureg>& regs();
     cpureg* find_reg(const string& name);
 };

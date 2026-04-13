@@ -16,57 +16,44 @@
 using namespace vsp;
 
 TEST(connection, constructor) {
-    connection conn("localhost", 1234);
-    EXPECT_STREQ(conn.host(), "localhost");
-    EXPECT_EQ(conn.port(), 1234);
+    connection conn;
+    EXPECT_STREQ(conn.host(), "");
+    EXPECT_EQ(conn.port(), 0);
     EXPECT_STREQ(conn.peer(), "");
     EXPECT_FALSE(conn.is_connected());
 }
 
-bool try_connect(connection& conn) {
-    try {
-        conn.connect();
-    } catch (...) {
-        return false;
-    }
-    return true;
-}
-
 TEST(connection, connect) {
-    mwr::socket server;
-    connection conn("localhost", 1234);
+    connection conn;
 
-    EXPECT_FALSE(server.is_connected());
     EXPECT_FALSE(conn.is_connected());
-    EXPECT_FALSE(try_connect(conn));
-    EXPECT_FALSE(server.is_connected());
+    EXPECT_FALSE(try_connect(conn, "localhost", 12345));
     EXPECT_FALSE(conn.is_connected());
 
-    server.listen(1234);
+    mwr::server_socket server(1, 0);
     EXPECT_TRUE(server.is_listening());
 
     EXPECT_FALSE(server.is_connected());
     EXPECT_FALSE(conn.is_connected());
-    EXPECT_TRUE(try_connect(conn));
+    EXPECT_TRUE(try_connect(conn, server.host(), server.port()));
     EXPECT_FALSE(server.is_connected());
     EXPECT_TRUE(conn.is_connected());
 
-    server.accept();
+    server.poll(100);
     EXPECT_TRUE(server.is_connected());
 
-    EXPECT_THAT(conn.peer(), testing::AnyOf(testing::StrEq("127.0.0.1:1234"),
-                                            testing::StrEq("::1:1234")));
+    string peer = mkstr("%s:%hu", server.host(), server.port());
+    EXPECT_EQ(conn.peer(), peer);
 }
 
 TEST(connection, disconnect) {
-    mwr::socket server;
-    connection conn("localhost", 1234);
+    mwr::server_socket server(1, 0);
+    connection conn;
 
-    server.listen(1234);
-
-    EXPECT_TRUE(try_connect(conn));
+    EXPECT_TRUE(try_connect(conn, server.host(), server.port()));
     EXPECT_TRUE(conn.is_connected());
-    server.accept();
+
+    server.poll(100);
     EXPECT_TRUE(server.is_connected());
 
     conn.disconnect();
@@ -74,7 +61,7 @@ TEST(connection, disconnect) {
     EXPECT_TRUE(server.is_connected());
 
     try {
-        server.recv_char();
+        server.recv_char(0);
         FAIL();
     } catch (...) {
     }
@@ -83,103 +70,99 @@ TEST(connection, disconnect) {
 }
 
 TEST(connection, server_disconnect) {
-    mwr::socket server;
-    connection conn("localhost", 1234);
+    mwr::server_socket server(1, 0);
+    connection conn;
 
-    server.listen(1234);
-
-    EXPECT_TRUE(try_connect(conn));
+    EXPECT_TRUE(try_connect(conn, server.host(), server.port()));
     EXPECT_TRUE(conn.is_connected());
-    server.accept();
+
+    server.poll(100);
     EXPECT_TRUE(server.is_connected());
 
-    server.disconnect();
+    server.disconnect_all();
     EXPECT_FALSE(server.is_connected());
     EXPECT_TRUE(conn.is_connected());
 
-    auto resp = conn.command("test");
-    EXPECT_FALSE(resp.has_value());
+    EXPECT_THROW(conn.command("test"), std::exception);
 }
 
 TEST(connection, send) {
-    mwr::socket server;
-    connection conn("localhost", 1234);
+    mwr::server_socket server(1, 0);
+    connection conn;
 
-    server.listen(1234);
-
-    EXPECT_TRUE(try_connect(conn));
+    EXPECT_TRUE(try_connect(conn, server.host(), server.port()));
     EXPECT_TRUE(conn.is_connected());
-    server.accept();
-    EXPECT_TRUE(server.is_connected());
 
-    std::future<bool> correct = std::async([&server]() {
+    server.poll(100);
+    EXPECT_TRUE(server.is_connected());
+    int client = server.clients()[0];
+
+    std::future<bool> correct = std::async([&server, client]() {
         std::string_view expected_msg = "$test#c0";
         for (const char& c : expected_msg) {
-            if (server.recv_char() != c)
+            if (server.recv_char(client) != c)
                 return false;
         }
 
-        server.send("+");
+        server.send(client, "+");
 
         std::string_view reply = "$OK,myarg#e6";
-        server.send(reply.data(), reply.size());
+        server.send(client, reply.data(), reply.size());
 
-        return server.recv_char() == '+';
+        return server.recv_char(client) == '+';
     });
+
     auto resp = conn.command("test");
     correct.wait();
     EXPECT_TRUE(correct.get());
-
-    EXPECT_TRUE(resp.has_value());
-    EXPECT_EQ(resp->size(), 2);
-    EXPECT_EQ(resp->at(0), "OK");
-    EXPECT_EQ(resp->at(1), "myarg");
+    EXPECT_EQ(resp.size(), 2);
+    EXPECT_EQ(resp[0], "OK");
+    EXPECT_EQ(resp[1], "myarg");
 }
 
 TEST(connection, nack) {
-    mwr::socket server;
-    connection conn("localhost", 1234);
+    mwr::server_socket server(1, 0);
+    connection conn;
 
-    server.listen(1234);
-
-    EXPECT_TRUE(try_connect(conn));
+    EXPECT_TRUE(try_connect(conn, server.host(), server.port()));
     EXPECT_TRUE(conn.is_connected());
-    server.accept();
-    EXPECT_TRUE(server.is_connected());
 
-    std::future<bool> correct = std::async([&server]() {
+    server.poll(100);
+    EXPECT_TRUE(server.is_connected());
+    int client = server.clients()[0];
+
+    std::future<bool> correct = std::async([&server, client]() {
         std::string_view expected_msg = "$test#c0";
         for (const char& c : expected_msg) {
-            if (server.recv_char() != c)
+            if (server.recv_char(client) != c)
                 return false;
         }
 
-        server.send("-");
+        server.send(client, "-");
 
         for (const char& c : expected_msg) {
-            if (server.recv_char() != c)
+            if (server.recv_char(client) != c)
                 return false;
         }
 
-        server.send("+");
+        server.send(client, "+");
 
         std::string_view reply_wrong = "$OK,myarg#e4";
-        server.send(reply_wrong.data(), reply_wrong.size());
+        server.send(client, reply_wrong.data(), reply_wrong.size());
 
-        if (server.recv_char() != '-')
+        if (server.recv_char(client) != '-')
             return false;
 
         std::string_view reply = "$OK,myarg#e6";
-        server.send(reply.data(), reply.size());
+        server.send(client, reply.data(), reply.size());
 
-        return server.recv_char() == '+';
+        return server.recv_char(client) == '+';
     });
     auto resp = conn.command("test");
     correct.wait();
     EXPECT_TRUE(correct.get());
 
-    EXPECT_TRUE(resp.has_value());
-    EXPECT_EQ(resp->size(), 2);
-    EXPECT_EQ(resp->at(0), "OK");
-    EXPECT_EQ(resp->at(1), "myarg");
+    EXPECT_EQ(resp.size(), 2);
+    EXPECT_EQ(resp[0], "OK");
+    EXPECT_EQ(resp[1], "myarg");
 }

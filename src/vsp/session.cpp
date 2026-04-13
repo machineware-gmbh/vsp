@@ -15,12 +15,7 @@
 
 #include <pugixml.hpp>
 
-using std::stoi;
-using std::stoull;
-
 namespace vsp {
-
-list<shared_ptr<session>> session::local_sessions;
 
 // converts a string of bytes to a vector of bytes
 // "ddccbbaa" -> { aa, bb, cc, dd }
@@ -49,7 +44,7 @@ static void strhex(u8* buffer, size_t buflen, const string& bytes) {
     }
 }
 
-static const unordered_map<std::string_view, stop_reason_t> VSP_STOP_REASONS{
+static const unordered_map<std::string_view, vsp_stop_reason> VSP_STOP_REASONS{
     { "user", VSP_STOP_REASON_USER },
     { "breakpoint", VSP_STOP_REASON_BREAKPOINT },
     { "target", VSP_STOP_REASON_TARGET_STEP_COMPLETE },
@@ -59,7 +54,7 @@ static const unordered_map<std::string_view, stop_reason_t> VSP_STOP_REASONS{
     { "<unknown>", VSP_STOP_REASON_UNKNOWN },
 };
 
-static stop_reason_t stop_reason_from_string(const string& s) {
+static vsp_stop_reason stop_reason_from_string(const string& s) {
     if (!VSP_STOP_REASONS.count(s))
         return VSP_STOP_REASON_UNKNOWN;
 
@@ -75,76 +70,65 @@ string_view stop_reason_str(const stop_reason& reason) {
     return "<unknown>";
 }
 
-string stop_mode_str(stop_mode_t mode) {
-    switch (mode) {
-    case VSP_STOP_MODE_SOFT:
-        return "soft";
-    case VSP_STOP_MODE_HARD:
-        return "hard";
-    default:
-        return "<unknown>";
-    }
-}
-
 ostream& operator<<(ostream& out, const stop_reason& reason) {
     return out << stop_reason_str(reason);
 }
 
-session::session(const string& host, u16 port):
-    m_conn(host, port),
+session::session(const session_info& info): session(info.host, info.port) {
+    // nothing to do
+}
+
+session::session():
+    m_conn(),
     m_sysc_version(),
     m_vcml_version(),
-    m_protover(0),
-    m_running(false),
+    m_protover(VSP_UNKNOWN),
+    m_running(),
     m_reason(),
-    m_time_ns(0),
-    m_cycle(0),
-    m_mods(nullptr),
+    m_time_ns(),
+    m_cycle(),
+    m_mods(),
     m_targets() {
+}
+
+session::session(const string& host, u16 port): session() {
+    connect(host, port);
 }
 
 session::~session() {
     disconnect();
 }
 
-bool session::update_version() {
-    optional<vector<string>> resp = m_conn.command("version");
+void session::update_version() {
+    auto resp = m_conn.command("version");
+    MWR_REPORT_ON(resp.size() < 3, "malformed version response");
 
-    if (!(connection::check_response(resp) &&
-          (resp->size() == 3 || resp->size() == 4)))
-        return false;
+    m_sysc_version = resp[1];
+    m_vcml_version = resp[2];
 
-    m_sysc_version = resp->at(1);
-    m_vcml_version = resp->at(2);
-
-    if (resp->size() > 3)
-        m_protover = stoi(resp->at(3));
-
-    return true;
+    if (resp.size() > 3)
+        m_protover = stoi(resp[3]);
 }
 
-bool session::update_status() {
-    optional<vector<string>> resp = m_conn.command("status");
+void session::update_status() {
+    auto resp = m_conn.command("status");
 
     if (!is_connected()) {
         m_running = false;
-        return false;
+        return;
     }
 
-    if (!connection::check_response(resp, 4))
-        return false;
+    MWR_REPORT_ON(resp.size() < 4, "malformed status response");
 
-    if (resp->at(1) == "running") {
+    if (resp[1] == "running") {
         m_running = true;
     } else {
         m_running = false;
-        update_reason(resp->at(1).substr(8));
+        update_reason(resp[1].substr(8));
     }
 
-    m_time_ns = stoull(resp->at(2));
-    m_cycle = stoull(resp->at(3));
-
-    return true;
+    m_time_ns = stoull(resp[2]);
+    m_cycle = stoull(resp[3]);
 }
 
 void session::update_reason(const string& reason) {
@@ -211,13 +195,13 @@ void session::update_reason(const string& reason) {
         newreason.wwatchpoint.addr = stoull(args[2], 0, 16);
 
         const string& data = args[3];
-        if (data.size() > stop_reason::DATA_SIZE) {
+        const size_t hex_chars_per_byte = 2;
+        if (hex_chars_per_byte * data.length() > stop_reason::DATA_SIZE) {
             log_error("wwatchpoint: written %lu bytes (>%lu), data dropped",
                       data.size(), stop_reason::DATA_SIZE);
         }
 
         strhex(newreason.wwatchpoint.data, stop_reason::DATA_SIZE, data);
-
         newreason.wwatchpoint.time = stoull(args[4], 0, 10);
         break;
     }
@@ -231,8 +215,8 @@ void session::update_reason(const string& reason) {
     m_reason = newreason;
 }
 
-module* xml_parse_modules(connection& conn, const pugi::xml_node& node,
-                          module* parent) {
+static module* xml_parse_modules(connection& conn, const pugi::xml_node& node,
+                                 module* parent) {
     module* mod = new module(node.attribute("name").value(), conn, parent,
                              node.attribute("kind").value(),
                              node.attribute("version").value());
@@ -256,15 +240,13 @@ module* xml_parse_modules(connection& conn, const pugi::xml_node& node,
     return mod;
 }
 
-bool session::update_modules() {
-    optional<vector<string>> resp = m_conn.command("list,xml");
-
-    if (!connection::check_response(resp, 2))
-        return false;
+void session::update_modules() {
+    auto resp = m_conn.command("list,xml");
+    MWR_REPORT_ON(resp.size() < 2, "malformed 'list' response");
 
     pugi::xml_document list;
-    if (!list.load_string(resp->at(1).c_str()))
-        return false;
+    if (!list.load_string(resp[1].c_str()))
+        MWR_REPORT("invalid module xml");
 
     pugi::xml_node hierachy = list.child("hierarchy");
 
@@ -274,73 +256,64 @@ bool session::update_modules() {
 
     for (auto& t : hierachy.children("target"))
         m_targets.emplace_back(m_conn, t.text().as_string());
-
-    return true;
 }
 
-bool session::running() {
-    update_status();
-    return m_running;
+const char* session::sysc_version() const {
+    return m_sysc_version.c_str();
 }
 
-const string& session::sysc_version() const {
-    return m_sysc_version;
-}
-
-const string& session::vcml_version() const {
-    return m_vcml_version;
+const char* session::vcml_version() const {
+    return m_vcml_version.c_str();
 }
 
 int session::proto_version() const {
     return m_protover;
 }
 
-unsigned long long session::time_ns() {
+u64 session::get_time_ns() {
     update_status();
     return m_time_ns;
 }
 
-unsigned long long session::cycle() {
+u64 session::get_cycle_count() {
     update_status();
     return m_cycle;
 }
 
-unsigned long long session::quantum_ns() {
-    optional<vector<string>> resp = m_conn.command("getq");
-
-    if (!connection::check_response(resp, 2))
-        return 0;
-
-    return stoi(resp->at(1));
+u64 session::get_quantum_ns() {
+    auto resp = m_conn.command("getq");
+    MWR_REPORT_ON(resp.size() < 2, "malfomed get-quantum response");
+    return stoull(resp[1]);
 }
 
-void session::set_quantum(unsigned long long ns) {
-    auto resp = m_conn.command("setq," + to_string(ns));
-    MWR_REPORT_ON(!connection::check_response(resp, 1),
-                  "set quantum failed (%s)", response_get_error(resp).c_str());
+void session::set_quantum(u64 ns) {
+    m_conn.command("setq," + to_string(ns));
 }
 
-void session::connect() {
+void session::connect(const session_info& info) {
+    connect(info.host, info.port);
+}
+
+void session::connect(const string& host, u16 port) {
     if (m_conn.is_connected())
-        return;
+        disconnect();
 
     try {
-        m_conn.connect();
-    } catch (mwr::report&) {
-        return;
+        m_conn.connect(host, port);
+        if (!is_connected())
+            return;
+
+        update_version();
+        update_status();
+
+        stop();
+        while (check_running())
+            mwr::cpu_yield();
+
+        update_modules();
+    } catch (std::exception& ex) {
+        MWR_REPORT("error connecting: %s", ex.what());
     }
-
-    if (!is_connected())
-        return;
-
-    update_version();
-    update_status();
-
-    stop();
-    while (running())
-        mwr::cpu_yield();
-
-    update_modules();
 }
 
 void session::disconnect() {
@@ -361,11 +334,12 @@ void session::quit() {
     } catch (mwr::report&) {
         // excpect disconnect
     }
+
     disconnect();
 }
 
 void session::step(bool block) {
-    step(quantum_ns(), block);
+    step(get_quantum_ns(), block);
 }
 
 void session::step(u64 ns, bool block) {
@@ -400,21 +374,33 @@ void session::run() {
     }
 }
 
+bool session::check_running() {
+    update_status();
+    return m_running;
+}
+
 void session::stop() {
     update_status();
     if (m_running)
         m_conn.command("stop");
 }
 
-void session::set_stop_mode(stop_mode_t mode) {
-    m_conn.command("setsm," + stop_mode_str(mode));
+void session::set_stop_mode(vsp_stop_mode mode) {
+    switch (mode) {
+    case VSP_STOP_MODE_SOFT:
+        m_conn.command("setsm,soft");
+        break;
+    case VSP_STOP_MODE_HARD:
+        m_conn.command("setsm,hard");
+        break;
+    default:
+        MWR_ERROR("invalid stop mode: %d", mode);
+    }
 }
 
-void session::dump() {
-    if (!m_mods)
-        return;
-
-    cout << *m_mods;
+void session::dump(ostream& os) {
+    if (m_mods)
+        os << *m_mods;
 }
 
 module* session::find_module(const string& name) {
@@ -447,26 +433,12 @@ target* session::find_target(const string& name) {
     return nullptr;
 }
 
-list<target>& session::targets() {
-    return m_targets;
-}
-
-const char* session::peer() const {
-    return m_conn.peer();
-}
-
-const char* session::host() const {
-    return m_conn.host();
-}
-
-u16 session::port() const {
-    return m_conn.port();
-}
-
-list<shared_ptr<session>>& session::get_sessions() {
+vector<session_info> session::local_sessions() {
+    vector<session_info> sessions;
     for (const auto& f : fs::directory_iterator(mwr::temp_dir())) {
         if (f.path().filename().string().find("vcml_session_") != 0)
             continue;
+
         ifstream file(f.path());
         if (!file.is_open())
             continue;
@@ -476,15 +448,10 @@ list<shared_ptr<session>>& session::get_sessions() {
             continue;
 
         u16 port = stoi(data);
-
-        for (const auto& s : local_sessions) {
-            if (s->m_conn.host() == host && s->m_conn.port() == port)
-                continue;
-        }
-
-        local_sessions.emplace_back(make_shared<session>(host, port));
+        sessions.push_back({ host, port });
     }
-    return local_sessions;
+
+    return sessions;
 }
 
 } // namespace vsp

@@ -35,7 +35,7 @@ public:
     const string& type() const;
     size_t count() const;
 
-    optional<vector<string>> get();
+    vector<string> get();
     string get_str();
 
     void set_escaped(const string& val);

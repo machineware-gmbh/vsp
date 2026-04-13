@@ -17,9 +17,9 @@ namespace cli {
 using mwr::termcolors;
 
 startup::startup(): m_session(nullptr) {
-    auto& local_sessions = vsp::session::get_sessions();
-    m_sessions.insert(m_sessions.end(), local_sessions.begin(),
-                      local_sessions.end());
+    auto local_sessions = vsp::session::local_sessions();
+    for (auto& info : local_sessions)
+        m_sessions.push_back(std::make_shared<vsp::session>(info));
 
     register_handler(&startup::handle_exit, "exit", "exit the program", "e");
     register_handler(&startup::handle_list, "list", "list available sessions",

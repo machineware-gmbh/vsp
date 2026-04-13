@@ -23,39 +23,35 @@ private:
         NACK = '-',
     };
 
-    socket m_socket;
     mutex m_mtx;
-    string m_host;
-    u16 m_port;
+    socket m_socket;
 
-    optional<string> recv();
-    bool send(const string& data);
+    string recv();
+    void send(const string& data);
 
     static u8 checksum(const string& s);
     static string escape(const string& s);
     static vector<string> decompose(const string& s);
 
 public:
-    explicit connection(const string& host, u16 port);
+    connection();
+    connection(const string& host, u16 port);
+    connection(connection&& other) noexcept;
     virtual ~connection() = default;
 
-    connection() = delete;
     connection(const connection&) = delete;
     connection& operator=(const connection&) = delete;
 
-    bool is_connected() const;
+    const char* peer() const { return m_socket.peer(); }
+    const char* host() const { return m_socket.host(); }
+    u16 port() const { return m_socket.port(); }
 
-    void connect();
+    bool is_connected() const { return m_socket.is_connected(); }
+
+    void connect(const string& host, u16 port);
     void disconnect();
 
-    optional<vector<string>> command(const string& cmd);
-    static bool check_response(const optional<vector<string>>& resp);
-    static bool check_response(const optional<vector<string>>& resp,
-                               size_t p_cnt);
-
-    const char* peer() const;
-    const char* host() const;
-    u16 port() const;
+    vector<string> command(const string& cmd);
 };
 
 } // namespace vsp

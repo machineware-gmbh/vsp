@@ -29,18 +29,11 @@ target::target(connection& conn, const string& name):
     update_regs();
 }
 
-bool target::update_regs() {
+void target::update_regs() {
     auto resp = m_conn.command("lreg," + m_name);
-    if (!resp)
-        return false;
-
-    if (resp->at(0) != "OK")
-        return false;
-
-    for (size_t i = 1; i < resp->size(); ++i) {
+    for (size_t i = 1; i < resp.size(); ++i) {
         size_t regsize = 0;
-        const string& regname = resp->at(i);
-
+        const string& regname = resp[i];
         size_t colon_pos = regname.find_last_of(':');
         if (colon_pos != string::npos)
             regsize = stoi(regname.substr(colon_pos + 1));
@@ -48,8 +41,6 @@ bool target::update_regs() {
         m_regs.emplace_back(m_conn, regname.substr(0, colon_pos), *this,
                             regsize);
     }
-
-    return true;
 }
 
 const char* target::name() const {
@@ -57,11 +48,10 @@ const char* target::name() const {
 }
 
 void target::step() {
-    auto resp = m_conn.command("step," + m_name);
-
-    if (!connection::check_response(resp, 1)) {
-        MWR_REPORT_ON(!resp.has_value(), "step failed");
-        const string& err = resp.value().at(1);
+    try {
+        auto resp = m_conn.command("step," + m_name);
+    } catch (std::exception& ex) {
+        string err = ex.what();
         MWR_REPORT_ON(err != "simulation running", "step failed");
     }
 }
@@ -73,12 +63,12 @@ void target::step(size_t steps) {
     for (size_t i = 0; i < steps; i++) {
         string err;
         do {
-            auto resp = m_conn.command("step," + m_name);
-
             err = "";
-            if (!connection::check_response(resp, 1)) {
-                MWR_REPORT_ON(!resp.has_value(), "step failed");
-                err = resp.value().at(1);
+
+            try {
+                auto resp = m_conn.command("step," + m_name);
+            } catch (std::exception& ex) {
+                err = ex.what();
                 MWR_REPORT_ON(err != "simulation running", "step failed");
                 mwr::usleep(sleep);
                 sleep *= sleep >= max_sleep ? 1 : 2;
@@ -89,18 +79,14 @@ void target::step(size_t steps) {
 
 u64 target::virt_to_phys(u64 va) {
     auto resp = m_conn.command("vapa," + m_name + "," + to_string(va));
-    if (!connection::check_response(resp, 2))
-        return 0;
-
-    return stoull(resp->at(1), nullptr, 16);
+    MWR_REPORT_ON(resp.size() < 2, "%s: malformed response", __func__);
+    return stoull(resp[1], nullptr, 16);
 }
 
-optional<breakpoint> target::insert_breakpoint(u64 addr) {
+breakpoint target::insert_breakpoint(u64 addr) {
     auto resp = m_conn.command("mkbp," + m_name + "," + to_string(addr));
-    if (!connection::check_response(resp, 2))
-        return nullopt;
-
-    const string& msg = resp->at(1);
+    MWR_REPORT_ON(resp.size() < 2, "%s: malformed response", __func__);
+    const string& msg = resp[1];
     string bpstr = msg.substr(msg.find_last_of(' ') + 1);
 
     breakpoint bp;
@@ -109,19 +95,16 @@ optional<breakpoint> target::insert_breakpoint(u64 addr) {
     return bp;
 }
 
-bool target::remove_breakpoint(const breakpoint& bp) {
-    auto resp = m_conn.command("rmbp," + to_string(bp.id));
-    return connection::check_response(resp, 1);
+void target::remove_breakpoint(const breakpoint& bp) {
+    m_conn.command("rmbp," + to_string(bp.id));
 }
 
-optional<watchpoint> target::insert_watchpoint(u64 base, u64 size,
-                                               watchpoint_type type) {
+watchpoint target::insert_watchpoint(u64 base, u64 size,
+                                     watchpoint_type type) {
     auto resp = m_conn.command("mkwp," + m_name + "," + to_string(base) + "," +
                                to_string(size) + "," + wp_type_str(type));
-    if (!connection::check_response(resp, 2))
-        return nullopt;
-
-    const string& msg = resp->at(1);
+    MWR_REPORT_ON(resp.size() < 2, "%s: malformed response", __func__);
+    const string& msg = resp[1];
     string wpstr = msg.substr(msg.find_last_of(' ') + 1);
 
     watchpoint wp;
@@ -132,10 +115,8 @@ optional<watchpoint> target::insert_watchpoint(u64 base, u64 size,
     return wp;
 }
 
-bool target::remove_watchpoint(const watchpoint& wp) {
-    auto resp = m_conn.command("rmwp," + to_string(wp.id) + "," +
-                               wp_type_str(wp.type));
-    return connection::check_response(resp, 1);
+void target::remove_watchpoint(const watchpoint& wp) {
+    m_conn.command("rmwp," + to_string(wp.id) + "," + wp_type_str(wp.type));
 }
 
 vector<u8> target::read_vmem(u64 vaddr, size_t size) {
@@ -143,13 +124,12 @@ vector<u8> target::read_vmem(u64 vaddr, size_t size) {
     string cmd = "vread," + m_name + "," + to_string(vaddr) + ',' +
                  to_string(size);
     auto resp = m_conn.command(cmd);
-    if (!connection::check_response(resp, size + 1))
-        return ret;
+    if (resp.size() != size + 1)
+        MWR_REPORT("%s: malformed response", __func__);
 
     ret.reserve(size);
-    for (size_t i = 1; i < resp->size(); ++i)
-        ret.emplace_back((u8)stoul(resp->at(i), nullptr, 16));
-
+    for (size_t i = 1; i < resp.size(); ++i)
+        ret.emplace_back((u8)stoul(resp[i], nullptr, 16));
     return ret;
 }
 
@@ -160,10 +140,9 @@ size_t target::write_vmem(u64 vaddr, const vector<u8>& data) {
         ss << ',' << static_cast<u32>(v);
 
     auto resp = m_conn.command(ss.str());
-    if (!connection::check_response(resp, 2))
-        return 0;
+    MWR_REPORT_ON(resp.size() < 2, "%s: malformed response", __func__);
 
-    auto parts = split(resp->at(1), ' ');
+    auto parts = split(resp[1], ' ');
     if (parts.size() != 3)
         return 0;
 
@@ -176,12 +155,12 @@ vector<u8> target::read_pmem(u64 paddr, size_t size) {
     string cmd = "pread," + m_name + "," + to_string(paddr) + ',' +
                  to_string(size);
     auto resp = m_conn.command(cmd);
-    if (!connection::check_response(resp, size + 1))
-        return ret;
+    if (resp.size() != size + 1)
+        MWR_REPORT("%s malformed response", __func__);
 
     ret.reserve(size);
-    for (size_t i = 1; i < resp->size(); ++i)
-        ret.emplace_back((u8)stoul(resp->at(i), nullptr, 16));
+    for (size_t i = 1; i < resp.size(); ++i)
+        ret.emplace_back((u8)stoul(resp[i], nullptr, 16));
 
     return ret;
 }
@@ -193,10 +172,9 @@ size_t target::write_pmem(u64 paddr, const vector<u8>& data) {
         ss << ',' << static_cast<u32>(v);
 
     auto resp = m_conn.command(ss.str());
-    if (!connection::check_response(resp, 2))
-        return 0;
+    MWR_REPORT_ON(resp.size() < 2, "%s: malformed response", __func__);
 
-    auto parts = split(resp->at(1), ' ');
+    auto parts = split(resp[1], ' ');
     if (parts.size() != 3)
         return 0;
 
@@ -204,28 +182,20 @@ size_t target::write_pmem(u64 paddr, const vector<u8>& data) {
     return stoull(bytes_written, nullptr, 10);
 }
 
-bool target::pc(u64& pc) {
-    cpureg* pc_reg = nullptr;
-
-    for (auto& reg : m_regs) {
-        if (strcmp(reg.name(), "pc") == 0 || strcmp(reg.name(), "PC") == 0) {
-            pc_reg = &reg;
-            break;
-        }
-    }
-
+u64 target::get_pc() {
+    cpureg* pc_reg = find_reg("pc");
     if (!pc_reg)
-        return false;
+        pc_reg = find_reg("PC");
+    MWR_REPORT_ON(!pc_reg, "cannot find program counter");
 
     vector<u8> val;
-    if (!pc_reg->get_value(val))
-        return false;
+    pc_reg->get_value(val);
 
-    pc = 0;
+    u64 pc = 0;
     for (auto it = val.rbegin(); it != val.rend(); ++it)
         pc = (pc << 8) | *it;
 
-    return true;
+    return pc;
 }
 
 list<cpureg>& target::regs() {

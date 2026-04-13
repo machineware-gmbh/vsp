@@ -66,6 +66,7 @@ endif()
 if(VSP_TESTS)
     message(STATUS "Building tests")
     enable_testing()
+    add_subdirectory(simplevp)
     add_subdirectory(test)
 endif()
 

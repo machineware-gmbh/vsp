@@ -18,7 +18,19 @@
 #include "vsp/module.h"
 #include "vsp/target.h"
 
-enum stop_reason_t {
+namespace vsp {
+
+enum vsp_proto_version {
+    VSP_UNKNOWN = 0,
+    VSP_V1 = 1,
+};
+
+enum vsp_stop_mode {
+    VSP_STOP_MODE_SOFT = 0,
+    VSP_STOP_MODE_HARD,
+};
+
+enum vsp_stop_reason {
     VSP_STOP_REASON_UNKNOWN = 0,
     VSP_STOP_REASON_USER,
     VSP_STOP_REASON_BREAKPOINT,
@@ -29,16 +41,9 @@ enum stop_reason_t {
     VSP_STOP_REASON_COUNT,
 };
 
-enum stop_mode_t {
-    VSP_STOP_MODE_SOFT = 0,
-    VSP_STOP_MODE_HARD,
-};
-
-namespace vsp {
-
 struct stop_reason {
     static constexpr size_t DATA_SIZE = 16;
-    stop_reason_t reason;
+    vsp_stop_reason reason;
     union {
         struct {
             u64 id;
@@ -66,6 +71,11 @@ struct stop_reason {
 string_view stop_reason_str(const stop_reason& reason);
 ostream& operator<<(ostream& out, const stop_reason& reason);
 
+struct session_info {
+    string host;
+    u16 port;
+};
+
 class session
 {
 private:
@@ -75,61 +85,67 @@ private:
     int m_protover;
     bool m_running;
     stop_reason m_reason;
-    unsigned long long m_time_ns;
-    unsigned long long m_cycle;
+    u64 m_time_ns;
+    u64 m_cycle;
     module* m_mods;
     list<target> m_targets;
 
-    static list<shared_ptr<session>> local_sessions;
-
-    void init();
-    bool update_version();
-    bool update_status();
-    bool update_modules();
+    void update_version();
+    void update_status();
+    void update_modules();
     void update_reason(const string& reason);
 
 public:
-    explicit session(const string& host, u16 port);
+    session();
+    session(const session_info& info);
+    session(const string& host, u16 port);
+    session(session&& other) noexcept;
     virtual ~session();
 
-    session() = delete;
     session(const session&) = delete;
     session& operator=(const session&) = delete;
 
-    bool running();
-    const string& sysc_version() const;
-    const string& vcml_version() const;
+    const char* sysc_version() const;
+    const char* vcml_version() const;
     int proto_version() const;
-    unsigned long long time_ns();
-    unsigned long long cycle();
-    unsigned long long quantum_ns();
-    void set_quantum(unsigned long long ns);
-    const stop_reason& reason() const { return m_reason; }
+
+    u64 get_time_ns();
+    u64 get_cycle_count();
+
+    u64 get_quantum_ns();
+    void set_quantum(u64 ns);
+
+    const char* peer() const { return m_conn.peer(); }
+    const char* host() const { return m_conn.host(); }
+    u16 port() const { return m_conn.port(); }
 
     bool is_connected() const;
-    void connect();
+    void connect(const session_info& info);
+    void connect(const string& host, u16 port);
     void disconnect();
-    void quit();
+
     void step(bool block = true);
     void step(u64 ns, bool block = true);
     void stepi(const target& t);
-    void run();
-    void stop();
-    void set_stop_mode(stop_mode_t mode);
 
-    void dump();
+    void run();
+    bool check_running();
+    void stop();
+    void set_stop_mode(vsp_stop_mode mode);
+    const stop_reason& reason() const { return m_reason; }
+
+    void quit();
+
+    void dump(ostream& os = std::cout);
+
     module* find_module(const string& name = "");
     attribute* find_attribute(const string& name);
     command* find_command(const string& name);
     target* find_target(const string& name);
 
-    list<target>& targets();
+    const list<target>& targets() const { return m_targets; }
 
-    const char* peer() const;
-    const char* host() const;
-    u16 port() const;
-
-    static list<shared_ptr<session>>& get_sessions();
+    static vector<session_info> local_sessions();
 };
 
 } // namespace vsp

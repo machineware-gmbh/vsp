@@ -16,4 +16,29 @@
 
 #include "vsp.h"
 
+template <typename T>
+static bool try_connect(T& session, const std::string& host, mwr::u16 port) {
+    try {
+        session.connect(host, port);
+    } catch (...) {
+        return false;
+    }
+    return true;
+}
+
+template <typename T>
+static bool try_connect(T& session, const std::string& host, mwr::u16 port,
+                        int timeout) {
+    auto deadline = std::chrono::steady_clock::now() +
+                    std::chrono::milliseconds(timeout);
+
+    while (std::chrono::steady_clock::now() < deadline) {
+        if (try_connect(session, host, port))
+            return true;
+        mwr::usleep(100);
+    }
+
+    return false;
+}
+
 #endif

@@ -12,16 +12,22 @@
 
 namespace vsp {
 
-connection::connection(const string& host, u16 port):
-    m_socket(), m_mtx(), m_host(host), m_port(port) {
+static const int MAX_RETRIES = 5;
+
+connection::connection(): m_mtx(), m_socket() {
+    // nothing to do
 }
 
-bool connection::is_connected() const {
-    return m_socket.is_connected();
+connection::connection(const string& host, u16 port): connection() {
+    connect(host, port);
 }
 
-void connection::connect() {
-    m_socket.connect(m_host, m_port);
+connection::connection(connection&& other) noexcept:
+    m_mtx(), m_socket(std::move(other.m_socket)) {
+}
+
+void connection::connect(const string& host, u16 port) {
+    m_socket.connect(host, port);
 }
 
 void connection::disconnect() {
@@ -70,10 +76,10 @@ vector<string> connection::decompose(const string& s) {
     return l;
 }
 
-optional<string> connection::recv() {
+string connection::recv() {
     string packet;
     u8 checksum = 0;
-    int repeat = 5; //  number of attempts to receive a valid response paket
+    int repeat = MAX_RETRIES;
     size_t maxlen = 10000000; // response length limit
 
     while (packet.size() < maxlen && m_socket.is_connected()) {
@@ -97,7 +103,7 @@ optional<string> connection::recv() {
 
             m_socket.send_char(NACK);
             if (--repeat == 0)
-                return nullopt;
+                MWR_REPORT("server nack while receiving");
             break;
         }
 
@@ -114,12 +120,12 @@ optional<string> connection::recv() {
         }
     }
 
-    return nullopt;
+    MWR_REPORT("server response too long");
 }
 
-bool connection::send(const string& data) {
+void connection::send(const string& data) {
     if (!m_socket.is_connected())
-        return false;
+        MWR_REPORT("not connected");
 
     string escaped_data = escape(data);
     stringstream ss;
@@ -128,56 +134,33 @@ bool connection::send(const string& data) {
        << std::setfill('0') << static_cast<int>(checksum(escaped_data));
 
     try {
-        for (int i = 0; i < 5; ++i) {
+        for (int i = 0; i < MAX_RETRIES; i++) {
             m_socket.send(ss.str());
             if (m_socket.recv_char() == ACK)
-                return true;
+                return;
         }
+
+        MWR_REPORT("server nack while sending");
     } catch (mwr::report&) {
+        disconnect();
+        throw;
+    }
+}
+
+vector<string> connection::command(const string& cmd) {
+    lock_guard lk(m_mtx);
+    send(cmd);
+    auto resp = decompose(recv());
+    if (resp.empty())
+        MWR_REPORT("server sent empty response");
+    if (resp.at(0) != "OK") {
+        string errmsg = "unknown error";
+        if (resp.size() > 1)
+            errmsg = resp.at(1);
+        MWR_REPORT("%s", errmsg.c_str());
     }
 
-    disconnect();
-    return false;
-}
-
-optional<vector<string>> connection::command(const string& cmd) {
-    lock_guard lk(m_mtx);
-
-    if (!send(cmd))
-        return nullopt;
-
-    optional<string> raw = recv();
-    if (!raw)
-        return nullopt;
-
-    return decompose(raw.value());
-}
-
-bool connection::check_response(const optional<vector<string>>& resp,
-                                size_t p_cnt) {
-    return check_response(resp) && resp->size() == p_cnt;
-}
-
-bool connection::check_response(const optional<vector<string>>& resp) {
-    if (!resp)
-        return false;
-
-    if (resp->at(0) != "OK")
-        return false;
-
-    return true;
-}
-
-const char* connection::peer() const {
-    return m_socket.peer();
-}
-
-const char* connection::host() const {
-    return m_host.c_str();
-}
-
-u16 connection::port() const {
-    return m_port;
+    return resp;
 }
 
 } // namespace vsp

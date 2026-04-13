@@ -21,8 +21,8 @@ simple_cpu::simple_cpu(const sc_core::sc_module_name& nm):
     float_property("float_property", 0.f),
     double_property("double_property", 0.),
     long_double_property("long_double_property", 0.l),
-    string_vector_property("string_vector_property", { "", "", "" }),
     i32_vector_property("i32_vector_property", { 0, 0, 0 }),
+    string_vector_property("string_vector_property", { "", "", "" }),
     string_property("string_property", "") {
     set_little_endian();
 
@@ -65,7 +65,8 @@ void simple_cpu::simulate(size_t cycles) {
 
         try {
             exec_inst();
-        } catch (cpu_exception exception) {
+        } catch (const cpu_exception& exception) {
+            (void)exception;
             return;
         }
     }

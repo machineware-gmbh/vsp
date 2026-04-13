@@ -20,47 +20,38 @@ cpureg::cpureg(connection& conn, const string& name, target& parent,
         update_size();
 }
 
-bool cpureg::update_size() {
+void cpureg::update_size() {
     auto resp = m_conn.command("getr," + string(m_parent.name()) + "," +
                                m_name);
-    if (!resp)
-        return false;
-    if (resp->at(0) != "OK")
-        return false;
-    m_size = resp->size() - 1;
-    return true;
+    m_size = resp.size() - 1;
 }
 
 size_t cpureg::size() const {
     return m_size;
 }
 
-bool cpureg::get_value(vector<u8>& ret) {
+void cpureg::get_value(vector<u8>& ret) {
     ret.clear();
     auto resp = m_conn.command("getr," + string(m_parent.name()) + "," +
                                m_name);
-    if (!connection::check_response(resp, m_size + 1))
-        return false;
+    if (resp.size() != m_size + 1)
+        MWR_REPORT("%s: malformed response", __func__);
 
-    ret.reserve(resp->size() - 1);
-    for (size_t i = 1; i < resp->size(); ++i)
-        ret.emplace_back(static_cast<u8>(stoul(resp->at(i), nullptr, 16)));
-
-    return true;
+    ret.reserve(resp.size() - 1);
+    for (size_t i = 1; i < resp.size(); ++i)
+        ret.emplace_back((u8)(stoul(resp.at(i), nullptr, 16)));
 }
 
-bool cpureg::set_value(const vector<u8>& val) {
-    if (val.size() > m_size)
-        return false;
+void cpureg::set_value(const vector<u8>& val) {
+    if (val.size() != m_size)
+        MWR_REPORT("%s: invalid initializer", __func__);
 
     stringstream ss;
     ss << "setr," << m_parent.name() << ',' << m_name;
     for (auto& v : val)
         ss << ',' << static_cast<u32>(v);
 
-    auto resp = m_conn.command(ss.str());
-
-    return connection::check_response(resp, 2);
+    m_conn.command(ss.str());
 }
 
 const char* cpureg::name() const {

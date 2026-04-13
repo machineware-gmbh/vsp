@@ -16,8 +16,6 @@ namespace cli {
 
 session::session(shared_ptr<vsp::session> s):
     m_session(std::move(s)), m_current_mod(nullptr) {
-    if (!m_session->is_connected())
-        m_session->connect();
     m_current_mod = m_session->find_module("");
 
     register_handler(&session::handle_cd, "cd",
@@ -128,14 +126,14 @@ bool session::handle_info(const string& args) {
     print_report_line("SystemC Version", m_session->sysc_version());
     print_report_line("Proto. Version", m_session->proto_version());
     print_report_line("Simulation Time",
-                      mwr::mkstr("%.9fs", m_session->time_ns() / 1e9));
-    print_report_line("Delta Cycle", to_string(m_session->cycle()));
+                      mwr::mkstr("%.9fs", m_session->get_time_ns() / 1e9));
+    print_report_line("Delta Cycle", to_string(m_session->get_cycle_count()));
     print_report_line("CLI Version", VSP_VERSION_STRING);
     return true;
 }
 
 bool session::handle_run(const string& args) {
-    if (m_session->running()) {
+    if (m_session->check_running()) {
         cout << "already running" << endl;
         return true;
     }
@@ -145,13 +143,13 @@ bool session::handle_run(const string& args) {
 }
 
 bool session::handle_stop(const string& args) {
-    if (!m_session->running()) {
+    if (!m_session->check_running()) {
         cout << "not running" << endl;
         return true;
     }
 
     m_session->stop();
-    while (m_session->running())
+    while (m_session->check_running())
         ;
     cout << "stopped by " << m_session->reason() << endl;
     return true;
@@ -189,7 +187,7 @@ bool session::handle_exec(const string& args) {
 string session::prompt() const {
     stringstream ss;
     ss << termcolors::BOLD << termcolors::WHITE << "[" << std::fixed
-       << std::setprecision(9) << m_session->time_ns() / 1e9 << "s] "
+       << std::setprecision(9) << m_session->get_time_ns() / 1e9 << "s] "
        << termcolors::CLEAR;
     ss << termcolors::YELLOW << m_session->peer() << termcolors::CLEAR;
     ss << " " << termcolors::BOLD << termcolors::CYAN

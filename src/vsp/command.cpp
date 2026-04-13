@@ -30,18 +30,13 @@ string command::execute(const vector<string>& args) {
 string command::execute(const string& args) {
     auto resp = m_conn.command("exec," + m_parent->hierarchy_name() + "," +
                                name() + (args.empty() ? "" : "," + args));
-    if (!resp)
-        throw std::runtime_error("error communicating with VP");
 
     stringstream ss;
-    for (size_t i = 1; i < resp->size(); ++i) {
-        ss << resp.value()[i];
-        if (i < resp->size() - 2)
+    for (size_t i = 1; i < resp.size(); ++i) {
+        ss << resp[i];
+        if (i < resp.size() - 2)
             ss << ",";
     }
-
-    if (resp.value()[0] == "E")
-        throw std::runtime_error(ss.str());
 
     return ss.str();
 }

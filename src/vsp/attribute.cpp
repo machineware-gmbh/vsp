@@ -25,37 +25,36 @@ size_t attribute::count() const {
     return m_count;
 }
 
-optional<vector<string>> attribute::get() {
+vector<string> attribute::get() {
     if (m_count == 0)
-        return nullopt;
+        return vector<string>();
 
-    optional<vector<string>> resp = m_conn.command("geta," + hierarchy_name());
-
-    if (!connection::check_response(resp, 2))
-        return nullopt;
-
-    resp->erase(resp->begin());
-    return std::move(resp.value());
+    auto resp = m_conn.command("geta," + hierarchy_name());
+    MWR_REPORT_ON(resp.size() != 2, "%s: malformed response", __func__);
+    resp.erase(resp.begin());
+    return resp;
 }
 
 string attribute::get_str() {
-    auto val = get();
-    if (!val)
-        return "<error>";
+    try {
+        auto val = get();
 
-    stringstream ss;
-    for (size_t i = 0; i < val.value().size(); ++i) {
-        ss << val.value()[i];
-        if (i != val.value().size() - 1)
-            ss << ",";
+        stringstream ss;
+        for (size_t i = 0; i < val.size(); ++i) {
+            ss << val[i];
+            if (i != val.size() - 1)
+                ss << ",";
+        }
+
+        return ss.str();
+
+    } catch (...) {
+        return "<error>";
     }
-    return ss.str();
 }
 
 void attribute::set_escaped(const string& val) {
-    auto resp = m_conn.command("seta," + hierarchy_name() + "," + val);
-    MWR_REPORT_ON(!connection::check_response(resp, 1), "%s: set failed (%s)",
-                  name(), response_get_error(resp).c_str());
+    m_conn.command("seta," + hierarchy_name() + "," + val);
 }
 
 void attribute::set(const char* val) {
