@@ -88,7 +88,7 @@ private:
     u64 m_time_ns;
     u64 m_cycle;
     module* m_mods;
-    list<target> m_targets;
+    vector<target*> m_targets;
 
     void update_version();
     void update_status();
@@ -143,7 +143,7 @@ public:
     command* find_command(const string& name);
     target* find_target(const string& name);
 
-    vector<target*> targets();
+    vector<target*> targets() const { return m_targets; }
 
     static vector<session_info> local_sessions();
 };
