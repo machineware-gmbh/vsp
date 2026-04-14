@@ -58,10 +58,10 @@ protected:
 };
 
 TEST_F(target_test, targets) {
-    auto& targets = sess.targets();
+    auto targets = sess.targets();
     EXPECT_EQ(targets.size(), 1);
 
-    EXPECT_STREQ(targets.front().name(), "system.cpu");
+    EXPECT_STREQ(targets.front()->name(), "system.cpu");
 
     target* targ;
     targ = sess.find_target("system.cpu");

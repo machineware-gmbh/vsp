@@ -143,7 +143,7 @@ public:
     command* find_command(const string& name);
     target* find_target(const string& name);
 
-    const list<target>& targets() const { return m_targets; }
+    vector<target*> targets();
 
     static vector<session_info> local_sessions();
 };

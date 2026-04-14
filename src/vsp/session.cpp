@@ -433,6 +433,13 @@ target* session::find_target(const string& name) {
     return nullptr;
 }
 
+vector<target*> session::targets() {
+    vector<target*> ret;
+    for (auto& t : m_targets)
+        ret.push_back(&t);
+    return ret;
+}
+
 vector<session_info> session::local_sessions() {
     vector<session_info> sessions;
     for (const auto& f : fs::directory_iterator(mwr::temp_dir())) {
