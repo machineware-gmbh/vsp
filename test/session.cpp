@@ -106,7 +106,7 @@ TEST_F(session_test, modules) {
     mod = sess.find_module("");
     ASSERT_NE(mod, nullptr);
     EXPECT_STREQ(mod->name(), "");
-    EXPECT_NE(mod->get_modules().size(), 0);
+    EXPECT_NE(mod->children().size(), 0);
 
     mod = sess.find_module("system");
     ASSERT_NE(mod, nullptr);
@@ -137,7 +137,7 @@ TEST_F(session_test, attributes) {
 
     vsp::module* cpu = sess.find_module("system.cpu");
     ASSERT_NE(cpu, nullptr);
-    EXPECT_NE(cpu->get_attributes().size(), 0);
+    EXPECT_NE(cpu->attributes().size(), 0);
     attr = cpu->find_attribute("arch");
     ASSERT_NE(attr, nullptr);
     EXPECT_EQ(attr->get_str(), "riscv");
@@ -277,7 +277,7 @@ TEST_F(session_test, commands) {
     vsp::module* system = sess.find_module("system");
     EXPECT_NE(system, nullptr);
 
-    auto& cmds = cpu->get_commands();
+    auto& cmds = cpu->commands();
     EXPECT_NE(cmds.size(), 0);
 
     command* cmd;

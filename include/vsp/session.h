@@ -122,7 +122,7 @@ public:
     bool is_connected() const;
     void connect(const session_info& info);
     void connect(const string& host, u16 port);
-    void disconnect();
+    void disconnect() noexcept;
 
     void step(bool block = true);
     void step(u64 ns, bool block = true);
@@ -143,7 +143,8 @@ public:
     command* find_command(const string& name);
     target* find_target(const string& name);
 
-    vector<target*> targets() const { return m_targets; }
+    const vector<target*>& targets() const { return m_targets; }
+    const vector<module*>& modules() const;
 
     static vector<session_info> local_sessions();
 };

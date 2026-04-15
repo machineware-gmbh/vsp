@@ -321,7 +321,7 @@ void session::connect(const string& host, u16 port) {
     }
 }
 
-void session::disconnect() {
+void session::disconnect() noexcept {
     m_conn.disconnect();
 
     if (m_mods != nullptr)
@@ -436,6 +436,15 @@ target* session::find_target(const string& name) {
     }
 
     return nullptr;
+}
+
+const vector<module*>& session::modules() const {
+    if (!m_mods) {
+        static vector<module*> empty;
+        return empty;
+    }
+
+    return m_mods->children();
 }
 
 vector<session_info> session::local_sessions() {

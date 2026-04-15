@@ -51,14 +51,14 @@ bool session::handle_list(const string& args) {
     }
 
     if (show_mods) {
-        for (auto& m : m_current_mod->get_modules()) {
+        for (auto& m : m_current_mod->children()) {
             cout << termcolors::BOLD << termcolors::CYAN << m->name()
                  << termcolors::CLEAR << endl;
         }
     }
 
     if (show_attr) {
-        for (auto& a : m_current_mod->get_attributes()) {
+        for (auto& a : m_current_mod->attributes()) {
             cout << termcolors::WHITE << a->name() << termcolors::CLEAR
                  << endl;
         }
@@ -66,7 +66,7 @@ bool session::handle_list(const string& args) {
 
     if (show_cmd) {
         vsp::command* cinfo = m_current_mod->find_command("cinfo");
-        for (auto& c : m_current_mod->get_commands()) {
+        for (auto& c : m_current_mod->commands()) {
             cout << termcolors::BOLD << termcolors::MAGENTA << c->name()
                  << termcolors::CLEAR;
 

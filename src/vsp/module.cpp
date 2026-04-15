@@ -98,22 +98,6 @@ command* module::find_command(const string& name) {
     return module->find_command(name.substr(dot_pos + 1));
 }
 
-module* module::parent() {
-    return m_parent;
-}
-
-const list<module*>& module::get_modules() {
-    return m_mods;
-}
-
-const list<attribute*>& module::get_attributes() {
-    return m_attrs;
-}
-
-const list<command*>& module::get_commands() {
-    return m_cmds;
-}
-
 void module::add_module(module* mod) {
     m_mods.push_back(mod);
 }

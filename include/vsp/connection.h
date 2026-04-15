@@ -49,7 +49,7 @@ public:
     bool is_connected() const { return m_socket.is_connected(); }
 
     void connect(const string& host, u16 port);
-    void disconnect();
+    void disconnect() noexcept;
 
     vector<string> command(const string& cmd);
 };

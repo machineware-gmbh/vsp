@@ -40,12 +40,12 @@ class target
 private:
     connection& m_conn;
     string m_name;
-    list<cpureg> m_regs;
+    vector<cpureg*> m_regs;
 
     void update_regs();
 
 public:
-    explicit target(connection& conn, const string& name);
+    target(connection& conn, const string& name);
     virtual ~target() = default;
 
     target() = delete;
@@ -72,7 +72,8 @@ public:
     size_t write_pmem(u64 paddr, const vector<u8>& data);
 
     u64 get_pc();
-    list<cpureg>& regs();
+
+    const vector<cpureg*>& regs() { return m_regs; }
     cpureg* find_reg(const string& name);
 };
 

@@ -24,8 +24,8 @@ private:
     size_t m_count;
 
 public:
-    explicit attribute(const string& name, connection& conn, module* parent,
-                       const string& type, size_t count);
+    attribute(const string& name, connection& conn, module* parent,
+              const string& type, size_t count);
     virtual ~attribute() = default;
 
     attribute() = delete;

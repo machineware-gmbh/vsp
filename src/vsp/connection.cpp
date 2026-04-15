@@ -30,7 +30,7 @@ void connection::connect(const string& host, u16 port) {
     m_socket.connect(host, port);
 }
 
-void connection::disconnect() {
+void connection::disconnect() noexcept {
     m_socket.disconnect();
 }
 

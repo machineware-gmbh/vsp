@@ -23,8 +23,8 @@ private:
     string m_desc;
 
 public:
-    explicit command(const string& name, connection& conn, module* parent,
-                     size_t argc, const string& desc);
+    command(const string& name, connection& conn, module* parent, size_t argc,
+            const string& desc);
     virtual ~command() = default;
 
     command() = delete;

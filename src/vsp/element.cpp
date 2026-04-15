@@ -18,10 +18,6 @@ element::element(const string& name, connection& conn, module* parent):
     m_conn(conn), m_parent(parent), m_name(name) {
 }
 
-const char* element::name() const {
-    return m_name.c_str();
-}
-
 string element::hierarchy_name() const {
     if (!m_parent)
         return "";

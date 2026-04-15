@@ -24,13 +24,13 @@ class module : public element
 private:
     string m_kind;
     string m_version;
-    list<module*> m_mods;
-    list<attribute*> m_attrs;
-    list<command*> m_cmds;
+    vector<module*> m_mods;
+    vector<attribute*> m_attrs;
+    vector<command*> m_cmds;
 
 public:
-    explicit module(const string& name, connection& conn, module* parent,
-                    const string& kind, const string& version);
+    module(const string& name, connection& conn, module* parent,
+           const string& kind, const string& version);
     virtual ~module();
     module() = delete;
     module(const module&) = delete;
@@ -45,17 +45,15 @@ public:
     attribute* find_attribute(const string& name);
     command* find_command(const string& name);
 
-    module* parent();
-
     void add_module(module* mod);
     void add_attribute(attribute* attr);
     void add_attribute(const string& name, const string& type, size_t count);
     void add_command(command* c);
     void add_command(const string& name, size_t argc, const string& desc);
 
-    const list<module*>& get_modules();
-    const list<attribute*>& get_attributes();
-    const list<command*>& get_commands();
+    const vector<module*>& children() const { return m_mods; }
+    const vector<attribute*>& attributes() const { return m_attrs; }
+    const vector<command*>& commands() const { return m_cmds; }
 };
 
 } // namespace vsp

@@ -77,7 +77,7 @@ TEST_F(target_test, modules) {
     mod = sess.find_module("");
     ASSERT_NE(mod, nullptr);
     EXPECT_STREQ(mod->name(), "");
-    EXPECT_NE(mod->get_modules().size(), 0);
+    EXPECT_NE(mod->children().size(), 0);
 
     mod = sess.find_module("system");
     ASSERT_NE(mod, nullptr);
@@ -108,7 +108,7 @@ TEST_F(target_test, attributes) {
 
     vsp::module* cpu = sess.find_module("system.cpu");
     ASSERT_NE(cpu, nullptr);
-    EXPECT_NE(cpu->get_attributes().size(), 0);
+    EXPECT_NE(cpu->attributes().size(), 0);
     attr = cpu->find_attribute("arch");
     ASSERT_NE(attr, nullptr);
     EXPECT_EQ(attr->get_str(), "riscv");
@@ -246,7 +246,7 @@ TEST_F(target_test, commands) {
     vsp::module* system = sess.find_module("system");
     EXPECT_NE(system, nullptr);
 
-    auto& cmds = cpu->get_commands();
+    auto& cmds = cpu->commands();
     EXPECT_NE(cmds.size(), 0);
 
     command* cmd;
@@ -306,11 +306,11 @@ TEST_F(target_test, register_read) {
     };
 
     size_t i = 0;
-    for (auto& reg : targ->regs()) {
-        EXPECT_STREQ(reg.name(), reg_names[i]);
+    for (auto* reg : targ->regs()) {
+        EXPECT_STREQ(reg->name(), reg_names[i]);
 
         vector<u8> ret;
-        reg.get_value(ret);
+        reg->get_value(ret);
         EXPECT_THAT(ret, AllOf(SizeIs(4), Each(0)));
 
         i++;

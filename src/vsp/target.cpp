@@ -38,8 +38,9 @@ void target::update_regs() {
         if (colon_pos != string::npos)
             regsize = stoi(regname.substr(colon_pos + 1));
 
-        m_regs.emplace_back(m_conn, regname.substr(0, colon_pos), *this,
-                            regsize);
+        auto reg = new cpureg(m_conn, regname.substr(0, colon_pos), *this,
+                              regsize);
+        m_regs.push_back(reg);
     }
 }
 
@@ -198,14 +199,10 @@ u64 target::get_pc() {
     return pc;
 }
 
-list<cpureg>& target::regs() {
-    return m_regs;
-}
-
 cpureg* target::find_reg(const string& name) {
     for (auto& reg : m_regs) {
-        if (strcmp(reg.name(), name.c_str()) == 0)
-            return &reg;
+        if (strcmp(reg->name(), name.c_str()) == 0)
+            return reg;
     }
 
     return nullptr;

@@ -29,8 +29,8 @@ private:
     void update_size();
 
 public:
-    explicit cpureg(connection& conn, const string& name, target& m_parent,
-                    size_t size = 0);
+    cpureg(connection& conn, const string& name, target& m_parent,
+           size_t size = 0);
     virtual ~cpureg() = default;
 
     cpureg() = delete;
