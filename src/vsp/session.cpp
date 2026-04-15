@@ -97,6 +97,11 @@ session::session(const string& host, u16 port): session() {
 
 session::~session() {
     disconnect();
+
+    for (auto& t : m_targets)
+        delete t;
+
+    m_targets.clear();
 }
 
 void session::update_version() {
@@ -255,7 +260,7 @@ void session::update_modules() {
     m_mods = xml_parse_modules(m_conn, hierachy, nullptr);
 
     for (auto& t : hierachy.children("target"))
-        m_targets.emplace_back(m_conn, t.text().as_string());
+        m_targets.push_back(new target(m_conn, t.text().as_string()));
 }
 
 const char* session::sysc_version() const {
@@ -426,8 +431,8 @@ command* session::find_command(const string& name) {
 
 target* session::find_target(const string& name) {
     for (auto& t : m_targets) {
-        if (strcmp(t.name(), name.c_str()) == 0)
-            return &t;
+        if (strcmp(t->name(), name.c_str()) == 0)
+            return t;
     }
 
     return nullptr;
