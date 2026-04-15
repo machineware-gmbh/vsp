@@ -46,7 +46,7 @@ private:
 
 public:
     target(connection& conn, const string& name);
-    virtual ~target() = default;
+    virtual ~target();
 
     target() = delete;
     target(const target&) = delete;

@@ -29,6 +29,13 @@ target::target(connection& conn, const string& name):
     update_regs();
 }
 
+target::~target() {
+    for (auto* reg : m_regs) {
+        if (reg != nullptr)
+            delete reg;
+    }
+}
+
 void target::update_regs() {
     auto resp = m_conn.command("lreg," + m_name);
     for (size_t i = 1; i < resp.size(); ++i) {
