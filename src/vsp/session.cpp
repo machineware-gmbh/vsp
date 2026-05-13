@@ -449,9 +449,14 @@ const vector<module*>& session::modules() const {
 
 vector<session_info> session::local_sessions() {
     vector<session_info> sessions;
+    std::string_view prefix("vcml_session_");
+
     for (const auto& f : fs::directory_iterator(mwr::temp_dir())) {
-        if (f.path().filename().string().find("vcml_session_") != 0)
+        string filename = f.path().filename().string();
+        if (filename.find(prefix) != 0)
             continue;
+
+        u32 pid = stoi(filename.substr(prefix.size()));
 
         ifstream file(f.path());
         if (!file.is_open())
@@ -462,7 +467,7 @@ vector<session_info> session::local_sessions() {
             continue;
 
         u16 port = stoi(data);
-        sessions.push_back({ host, port });
+        sessions.push_back({ host, port, pid });
     }
 
     return sessions;

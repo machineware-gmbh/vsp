@@ -37,6 +37,17 @@ protected:
     mwr::subprocess subp;
 };
 
+TEST_F(session_test, auto_discovery) {
+    auto sessions = session::local_sessions();
+    EXPECT_FALSE(sessions.empty());
+
+    auto it = find_if(sessions.begin(), sessions.end(),
+                      [pid = (u32)subp.pid()](const session_info& info) {
+                          return info.pid == pid;
+                      });
+    EXPECT_NE(it, sessions.end());
+}
+
 TEST_F(session_test, host_and_peer_data) {
     EXPECT_TRUE(sess.is_connected());
     EXPECT_STREQ(sess.host(), HOST);
