@@ -74,6 +74,7 @@ ostream& operator<<(ostream& out, const stop_reason& reason);
 struct session_info {
     string host;
     u16 port;
+    u32 pid;
 };
 
 class session
