@@ -259,8 +259,23 @@ void session::update_modules() {
         delete m_mods;
     m_mods = xml_parse_modules(m_conn, hierachy, nullptr);
 
-    for (auto& t : hierachy.children("target"))
-        m_targets.push_back(new target(m_conn, t.text().as_string()));
+    auto resolve_arch = [&](const string& target_name) -> std::string {
+        if (m_protover < 2) {
+            auto* attr = find_attribute(mkstr("%s.arch", target_name.c_str()));
+            MWR_REPORT_ON(!attr, "architecture not defined by %s",
+                          target_name.c_str());
+            return attr->get_str();
+        }
+
+        resp = m_conn.command("arch," + target_name);
+        MWR_REPORT_ON(resp.size() < 2, "malfomed arch response");
+        return resp[1];
+    };
+
+    for (auto& t : hierachy.children("target")) {
+        string name = t.text().as_string();
+        m_targets.push_back(new target(m_conn, name, resolve_arch(name)));
+    }
 }
 
 const char* session::sysc_version() const {

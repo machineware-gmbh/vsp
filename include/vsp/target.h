@@ -40,12 +40,13 @@ class target
 private:
     connection& m_conn;
     string m_name;
+    string m_arch;
     vector<cpureg*> m_regs;
 
     void update_regs();
 
 public:
-    target(connection& conn, const string& name);
+    target(connection& conn, const string& name, const string& arch);
     virtual ~target();
 
     target() = delete;
@@ -53,6 +54,7 @@ public:
     target& operator=(const target&) = delete;
 
     const char* name() const;
+    const char* arch() const;
 
     void step();
     void step(size_t steps);

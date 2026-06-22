@@ -129,6 +129,16 @@ TEST_F(target_test, attributes) {
     EXPECT_EQ(attr, nullptr);
 }
 
+TEST_F(target_test, architecture) {
+    attribute* attr;
+    attr = sess.find_attribute("system.cpu.arch");
+    EXPECT_EQ(attr->get_str(), "riscv");
+
+    target* targ = sess.find_target("system.cpu");
+    EXPECT_EQ(string(targ->arch()), "riscv");
+    sess.quit();
+}
+
 TEST_F(target_test, attribute_types) {
     attribute* attr;
 

@@ -24,8 +24,8 @@ static string wp_type_str(watchpoint_type type) {
     }
 }
 
-target::target(connection& conn, const string& name):
-    m_conn(conn), m_name(name), m_regs() {
+target::target(connection& conn, const string& name, const string& arch):
+    m_conn(conn), m_name(name), m_arch(arch), m_regs() {
     update_regs();
 }
 
@@ -53,6 +53,10 @@ void target::update_regs() {
 
 const char* target::name() const {
     return m_name.c_str();
+}
+
+const char* target::arch() const {
+    return m_arch.c_str();
 }
 
 void target::step() {
