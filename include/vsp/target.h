@@ -40,9 +40,12 @@ class target
 private:
     connection& m_conn;
     string m_name;
+    string m_arch;
     vector<cpureg*> m_regs;
 
     void update_regs();
+
+    void fetch_arch();
 
 public:
     target(connection& conn, const string& name);
@@ -53,7 +56,7 @@ public:
     target& operator=(const target&) = delete;
 
     const char* name() const;
-    string arch() const;
+    const char* arch() const;
 
     void step();
     void step(size_t steps);
