@@ -53,7 +53,7 @@ public:
     target& operator=(const target&) = delete;
 
     const char* name() const;
-    const char* arch() const;
+    string arch() const;
 
     void step();
     void step(size_t steps);

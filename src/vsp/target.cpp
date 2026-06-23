@@ -55,19 +55,19 @@ const char* target::name() const {
     return m_name.c_str();
 }
 
-const char* target::arch() const {
+string target::arch() const {
     auto resp = m_conn.command("version");
     int protover = resp.size() > 3 ? stoi(resp[3]) : 0;
 
     if (protover < 2) {
         resp = m_conn.command(mkstr("geta,%s.arch", m_name.c_str()));
         MWR_REPORT_ON(resp.size() != 2, "%s: malformed response", __func__);
-        return resp[1].c_str();
+        return resp[1];
     }
 
     resp = m_conn.command("arch," + m_name);
     MWR_REPORT_ON(resp.size() < 2, "malfomed arch response");
-    return resp[1].c_str();
+    return resp[1];
 }
 
 void target::step() {
