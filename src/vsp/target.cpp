@@ -24,8 +24,8 @@ static string wp_type_str(watchpoint_type type) {
     }
 }
 
-target::target(connection& conn, const string& name, const string& arch):
-    m_conn(conn), m_name(name), m_arch(arch), m_regs() {
+target::target(connection& conn, const string& name):
+    m_conn(conn), m_name(name), m_regs() {
     update_regs();
 }
 
@@ -56,7 +56,18 @@ const char* target::name() const {
 }
 
 const char* target::arch() const {
-    return m_arch.c_str();
+    auto resp = m_conn.command("version");
+    int protover = resp.size() > 3 ? stoi(resp[3]) : 0;
+
+    if (protover < 2) {
+        resp = m_conn.command(mkstr("geta,%s.arch", m_name.c_str()));
+        MWR_REPORT_ON(resp.size() != 2, "%s: malformed response", __func__);
+        return resp[1].c_str();
+    }
+
+    resp = m_conn.command("arch," + m_name);
+    MWR_REPORT_ON(resp.size() < 2, "malfomed arch response");
+    return resp[1].c_str();
 }
 
 void target::step() {
