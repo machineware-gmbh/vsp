@@ -60,6 +60,7 @@ void target::fetch_arch() {
         resp = m_conn.command(mkstr("geta,%s.arch", m_name.c_str()));
         MWR_REPORT_ON(resp.size() != 2, "%s: malformed response", __func__);
         m_arch = resp[1];
+        return;
     }
 
     resp = m_conn.command("arch," + m_name);
