@@ -39,6 +39,7 @@ public:
     vcml::property<string> string_property;
 
     simple_cpu(const sc_core::sc_module_name& nm);
+    virtual ~simple_cpu() = default;
 
     virtual u64 cycle_count() const override;
 
@@ -61,6 +62,8 @@ public:
     virtual bool write_reg_dbg(size_t idx, const void*, size_t l) override;
 
     virtual bool virt_to_phys(u64 vaddr, u64& paddr) override;
+
+    bool cmd_echo(const std::vector<std::string>& args, std::ostream& os);
 
 private:
     std::vector<u32> m_breakpoints;

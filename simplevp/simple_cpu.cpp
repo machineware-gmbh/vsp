@@ -32,6 +32,10 @@ simple_cpu::simple_cpu(const sc_core::sc_module_name& nm):
     define_cpureg_rw(32, "pc", sizeof(reg_t));
 
     reset();
+
+    // please keep the comma in the command description for testing!
+    register_command("echo", 0, &simple_cpu::cmd_echo,
+                     "echo command, used for testing");
 }
 
 mwr::u64 simple_cpu::cycle_count() const {
@@ -112,6 +116,13 @@ bool simple_cpu::remove_watchpoint(const vcml::range& addr,
         m_watchpoints.end());
     log_debug("watchpoint removed at 0x%08x-0x%08x", (u32)addr.start,
               (u32)addr.end);
+    return true;
+}
+
+bool simple_cpu::cmd_echo(const std::vector<std::string>& args, std::ostream& os) {
+    os << "OK";
+    for (const std::string& s : args)
+        os << "," << s;
     return true;
 }
 

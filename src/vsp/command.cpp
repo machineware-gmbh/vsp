@@ -20,7 +20,7 @@ command::command(const string& name, connection& conn, module* parent,
 }
 
 string command::execute(const vector<string>& args) {
-    if (args.size() != m_argc) {
+    if (args.size() < m_argc) {
         return "need " + to_string(m_argc) + " arguments for " + name() +
                ", have " + to_string(args.size());
     }
@@ -34,7 +34,7 @@ string command::execute(const string& args) {
     stringstream ss;
     for (size_t i = 1; i < resp.size(); ++i) {
         ss << resp[i];
-        if (i < resp.size() - 2)
+        if (i < resp.size() - 1)
             ss << ",";
     }
 

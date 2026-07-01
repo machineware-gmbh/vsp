@@ -270,7 +270,7 @@ TEST_F(target_test, commands) {
     EXPECT_NE(strlen(cmd->desc()), 0);
     EXPECT_THAT(cmd->execute({ "data", "0x0", "0x4" }),
                 ContainsRegex("reading range"));
-    EXPECT_THAT(cmd->execute({ "data", "0", "0", "0" }),
+    EXPECT_THAT(cmd->execute(vector<string>{ "data", "0" }),
                 ContainsRegex("need \\w+ arguments"));
 
     cmd = cpu->find_command("dump");
