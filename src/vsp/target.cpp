@@ -24,10 +24,24 @@ static string wp_type_str(watchpoint_type type) {
     }
 }
 
-target::target(connection& conn, const string& name):
-    m_conn(conn), m_name(name), m_arch(), m_regs() {
+target* target_group::find_target(const string& name) const {
+    for (auto* target : targets) {
+        if (name == target->name())
+            return target;
+    }
+
+    return nullptr;
+}
+
+target::target(connection& conn, const string& name, const string& arch,
+               target_group& group):
+    m_conn(conn), m_name(name), m_arch(arch), m_group(group), m_regs() {
     update_regs();
-    fetch_arch();
+
+    if (m_arch.empty())
+        fetch_arch();
+
+    m_group.targets.push_back(this);
 }
 
 target::~target() {
@@ -35,6 +49,8 @@ target::~target() {
         if (reg != nullptr)
             delete reg;
     }
+
+    mwr::stl_remove(m_group.targets, this);
 }
 
 void target::update_regs() {
@@ -66,14 +82,6 @@ void target::fetch_arch() {
     resp = m_conn.command("arch," + m_name);
     MWR_REPORT_ON(resp.size() < 2, "malfomed arch response");
     m_arch = resp[1];
-}
-
-const char* target::name() const {
-    return m_name.c_str();
-}
-
-const char* target::arch() const {
-    return m_arch.c_str();
 }
 
 void target::step() {
@@ -175,7 +183,7 @@ size_t target::write_vmem(u64 vaddr, const vector<u8>& data) {
     if (parts.size() != 3)
         return 0;
 
-    string bytes_written = parts[0];
+    const string& bytes_written = parts[0];
     return stoull(bytes_written, nullptr, 10);
 }
 
@@ -207,7 +215,7 @@ size_t target::write_pmem(u64 paddr, const vector<u8>& data) {
     if (parts.size() != 3)
         return 0;
 
-    string bytes_written = parts[0];
+    const string& bytes_written = parts[0];
     return stoull(bytes_written, nullptr, 10);
 }
 
