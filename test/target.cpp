@@ -62,6 +62,7 @@ TEST_F(target_test, targets) {
     EXPECT_EQ(targets.size(), 1);
 
     EXPECT_STREQ(targets.front()->name(), "system.cpu");
+    EXPECT_STREQ(targets.front()->arch(), "riscv");
 
     target* targ;
     targ = sess.find_target("system.cpu");
@@ -69,6 +70,28 @@ TEST_F(target_test, targets) {
 
     targ = sess.find_target("undefined-target");
     ASSERT_EQ(targ, nullptr);
+}
+
+TEST_F(target_test, target_groups) {
+    auto targets = sess.targets();
+    EXPECT_EQ(targets.size(), 1);
+
+    EXPECT_STREQ(targets.front()->name(), "system.cpu");
+    EXPECT_STREQ(targets.front()->group_name(), "system.cpu");
+    EXPECT_STREQ(targets.front()->arch(), "riscv");
+
+    auto groups = sess.target_groups();
+    ASSERT_EQ(groups.size(), 1);
+    auto group = sess.find_target_group("system.cpu");
+    ASSERT_NE(group, nullptr);
+    EXPECT_EQ(group->name, "system.cpu");
+    ASSERT_EQ(group->targets.size(), 1);
+    EXPECT_EQ(group->targets[0], targets.front());
+
+    auto* targ = group->find_target("system.cpu");
+    ASSERT_NE(targ, nullptr);
+    EXPECT_EQ(&targ->group(), group);
+    EXPECT_EQ(group->find_target("undefined-cpu"), nullptr);
 }
 
 TEST_F(target_test, modules) {
