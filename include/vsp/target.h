@@ -35,12 +35,21 @@ struct watchpoint {
     watchpoint_type type;
 };
 
+class target;
+
+struct target_group {
+    string name;
+    vector<target*> targets;
+    target* find_target(const string& name) const;
+};
+
 class target
 {
 private:
     connection& m_conn;
     string m_name;
     string m_arch;
+    target_group& m_group;
     vector<cpureg*> m_regs;
 
     void update_regs();
@@ -48,15 +57,19 @@ private:
     void fetch_arch();
 
 public:
-    target(connection& conn, const string& name);
+    target(connection& conn, const string& name, const string& arch,
+           target_group& group);
     virtual ~target();
 
     target() = delete;
     target(const target&) = delete;
     target& operator=(const target&) = delete;
 
-    const char* name() const;
-    const char* arch() const;
+    const char* name() const { return m_name.c_str(); }
+    const char* arch() const { return m_arch.c_str(); }
+
+    const target_group& group() const { return m_group; }
+    const char* group_name() const { return m_group.name.c_str(); }
 
     void step();
     void step(size_t steps);
