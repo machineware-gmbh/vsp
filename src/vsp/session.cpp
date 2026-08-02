@@ -263,9 +263,9 @@ void session::update_modules() {
     for (auto& t : hierachy.children("target")) {
         string name = t.text().as_string();
         string arch = t.attribute("arch").value();
-        string group_name = t.attribute("group").value();
-        auto& group = m_target_groups[group_name];
-        group.name = group_name;
+        string gname = t.attribute("group").value();
+        auto& group = m_target_groups[gname];
+        group.name = gname.empty() ? name : gname;
         m_targets.push_back(new target(m_conn, name, arch, group));
     }
 }
