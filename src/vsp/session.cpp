@@ -264,8 +264,10 @@ void session::update_modules() {
         string name = t.text().as_string();
         string arch = t.attribute("arch").value();
         string gname = t.attribute("group").value();
+        if (gname.empty())
+            gname = name;
         auto& group = m_target_groups[gname];
-        group.name = gname.empty() ? name : gname;
+        group.name = gname;
         m_targets.push_back(new target(m_conn, name, arch, group));
     }
 }
