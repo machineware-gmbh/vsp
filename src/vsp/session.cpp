@@ -380,6 +380,15 @@ void session::stepi(const target& t) {
         update_status();
 }
 
+void session::step(const vector<target*>& targets) {
+    stringstream ss;
+    ss << "step";
+    for (auto* tgt : targets)
+        ss << ',' << tgt->name();
+
+    m_conn.command(ss.str());
+}
+
 void session::run() {
     update_status();
     if (!m_running) {
