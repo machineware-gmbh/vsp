@@ -80,9 +80,8 @@ string connection::recv() {
     string packet;
     u8 checksum = 0;
     int repeat = MAX_RETRIES;
-    size_t maxlen = 10000000; // response length limit
 
-    while (packet.size() < maxlen && m_socket.is_connected()) {
+    while (m_socket.is_connected()) {
         char r = m_socket.recv_char();
 
         switch (r) {
