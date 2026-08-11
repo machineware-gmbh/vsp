@@ -130,6 +130,8 @@ public:
     void step(u64 ns, bool block = true);
     void stepi(const target& t);
 
+    void step(const vector<target*>& targets);
+
     void run();
     bool check_running();
     void stop();
