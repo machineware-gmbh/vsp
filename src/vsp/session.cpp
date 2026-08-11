@@ -352,20 +352,15 @@ void session::quit() {
     disconnect();
 }
 
-void session::step(bool block) {
-    step(get_quantum_ns(), block);
+void session::step() {
+    step(get_quantum_ns());
 }
 
-void session::step(u64 ns, bool block) {
+void session::step(u64 ns) {
     update_status();
     if (!m_running) {
         m_running = true;
         m_conn.command("resume," + to_string(ns) + "ns");
-    }
-
-    if (block) {
-        while (m_running)
-            update_status();
     }
 }
 
@@ -375,9 +370,16 @@ void session::stepi(const target& t) {
         m_running = true;
         m_conn.command("step," + string(t.name()));
     }
+}
 
-    while (m_running)
-        update_status();
+void session::step(const vector<target*>& targets) {
+    stringstream ss;
+    ss << "step";
+
+    for (const auto* tgt : targets)
+        ss << ',' << tgt->name();
+
+    m_conn.command(ss.str());
 }
 
 void session::step(const vector<target*>& targets) {
