@@ -365,21 +365,22 @@ void session::step(u64 ns) {
 }
 
 void session::stepi(const target& t) {
-    update_status();
-    if (!m_running) {
-        m_running = true;
-        m_conn.command("step," + string(t.name()));
-    }
+    step({ &t });
 }
 
-void session::step(const vector<target*>& targets) {
-    stringstream ss;
-    ss << "step";
+void session::step(const vector<const target*>& targets) {
+    update_status();
+    if (!m_running && !targets.empty()) {
+        m_running = true;
 
-    for (const auto* tgt : targets)
-        ss << ',' << tgt->name();
+        stringstream ss;
+        ss << "step";
 
-    m_conn.command(ss.str());
+        for (const auto* tgt : targets)
+            ss << ',' << tgt->name();
+
+        m_conn.command(ss.str());
+    }
 }
 
 void session::step(const vector<target*>& targets) {
