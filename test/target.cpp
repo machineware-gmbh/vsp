@@ -649,10 +649,10 @@ TEST_F(target_test, multi_target_stepping) {
     ASSERT_TRUE(wait_for_target());
     EXPECT_EQ(sess.reason().reason, VSP_STOP_REASON_TARGET_STEP_COMPLETE);
 
-    uint total_steps = 0;
+    size_t total_steps = 0;
     total_steps += (targ0->get_pc() - prev_pc0) / 4;
     total_steps += (targ1->get_pc() - prev_pc1) / 4;
-    EXPECT_EQ(total_steps, 1u);
+    EXPECT_EQ(total_steps, 1ull);
 
     prev_pc0 = targ0->get_pc();
     prev_pc1 = targ1->get_pc();
@@ -668,7 +668,7 @@ TEST_F(target_test, multi_target_stepping) {
     total_steps = 0;
     total_steps += (targ0->get_pc() - prev_pc0) / 4;
     total_steps += (targ1->get_pc() - prev_pc1) / 4;
-    EXPECT_NE(total_steps, 1u);
+    EXPECT_NE(total_steps, 1ull);
 }
 
 TEST_F(target_test, stop_with_wait) {
