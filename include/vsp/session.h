@@ -129,7 +129,7 @@ public:
     void step();
     void step(u64 ns);
     void stepi(const target& t);
-    void step(const vector<target*>& targets);
+    void step(const vector<const target*>& targets);
 
     void step(const vector<target*>& targets);
 
