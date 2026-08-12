@@ -17,8 +17,9 @@ public:
     static constexpr size_t MEMSIZE = 0x8000;
 
     vcml::property<vcml::range> memrange;
+    vcml::property<size_t> num_cpus;
 
-    simple_cpu cpu;
+    std::vector<simple_cpu*> cpus;
 
     vcml::generic::bus bus;
     vcml::generic::clock clock;
@@ -28,22 +29,39 @@ public:
     simple_system(const sc_core::sc_module_name& nm):
         vcml::system(nm),
         memrange("memrange", { 0, MEMSIZE - 1 }),
-        cpu("cpu"),
+        num_cpus("num_cpus", 2),
+        cpus(),
         bus("bus"),
         clock("clock", 1 * vcml::GHz),
         mem("memory", MEMSIZE),
         reset("reset") {
-        bus.bind(cpu.data);
-        bus.bind(cpu.insn);
         bus.bind(mem.in, memrange);
 
         clock.clk.bind(bus.clk);
-        clock.clk.bind(cpu.clk);
         clock.clk.bind(mem.clk);
 
         reset.rst.bind(bus.rst);
-        reset.rst.bind(cpu.rst);
         reset.rst.bind(mem.rst);
+
+        for (size_t i = 0; i < num_cpus; i++) {
+            cpus.push_back(new simple_cpu(mwr::mkstr("cpu%zu", i).c_str()));
+            cpus[i]->set_target_group(std::string("processors"));
+
+            bus.bind(cpus[i]->data);
+            bus.bind(cpus[i]->insn);
+
+            clock.clk.bind(cpus[i]->clk);
+            reset.rst.bind(cpus[i]->rst);
+        }
+    }
+
+    ~simple_system() {
+        for (auto *cpu : cpus) {
+            if (cpu) {
+                delete cpu;
+                cpu = nullptr;
+            }
+        }
     }
 
     virtual const char* version() const override { return "v1.0"; }
