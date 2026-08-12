@@ -90,6 +90,7 @@ private:
     u64 m_cycle;
     module* m_mods;
     vector<target*> m_targets;
+    unordered_map<string, target_group> m_target_groups;
 
     void update_version();
     void update_status();
@@ -146,6 +147,9 @@ public:
 
     const vector<target*>& targets() const { return m_targets; }
     const vector<module*>& modules() const;
+
+    const unordered_map<string, target_group>& target_groups() const;
+    const target_group* find_target_group(const string& name) const;
 
     static vector<session_info> local_sessions();
 };

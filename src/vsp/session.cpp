@@ -88,7 +88,8 @@ session::session():
     m_time_ns(),
     m_cycle(),
     m_mods(),
-    m_targets() {
+    m_targets(),
+    m_target_groups() {
 }
 
 session::session(const string& host, u16 port): session() {
@@ -259,8 +260,16 @@ void session::update_modules() {
         delete m_mods;
     m_mods = xml_parse_modules(m_conn, hierachy, nullptr);
 
-    for (auto& t : hierachy.children("target"))
-        m_targets.push_back(new target(m_conn, t.text().as_string()));
+    for (auto& t : hierachy.children("target")) {
+        string name = t.text().as_string();
+        string arch = t.attribute("arch").value();
+        string gname = t.attribute("group").value();
+        if (gname.empty())
+            gname = name;
+        auto& group = m_target_groups[gname];
+        group.name = gname;
+        m_targets.push_back(new target(m_conn, name, arch, group));
+    }
 }
 
 const char* session::sysc_version() const {
@@ -471,6 +480,15 @@ vector<session_info> session::local_sessions() {
     }
 
     return sessions;
+}
+
+const unordered_map<string, target_group>& session::target_groups() const {
+    return m_target_groups;
+}
+
+const target_group* session::find_target_group(const string& name) const {
+    auto it = m_target_groups.find(name);
+    return it != m_target_groups.end() ? &it->second : nullptr;
 }
 
 } // namespace vsp
