@@ -47,6 +47,7 @@ public:
     vcml::property<std::vector<i32>> i32_vector_property;
     vcml::property<std::vector<string>> string_vector_property;
     vcml::property<string> string_property;
+    vcml::property<string> group;
 
     simple_cpu(const sc_core::sc_module_name& nm);
     virtual ~simple_cpu() = default;

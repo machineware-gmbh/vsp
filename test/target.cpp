@@ -59,13 +59,15 @@ protected:
 
 TEST_F(target_test, targets) {
     auto targets = sess.targets();
-    EXPECT_EQ(targets.size(), 1);
+    EXPECT_EQ(targets.size(), 2);
 
-    EXPECT_STREQ(targets.front()->name(), "system.cpu");
-    EXPECT_STREQ(targets.front()->arch(), "riscv");
+    EXPECT_STREQ(targets[0]->name(), "system.cpu0");
+    EXPECT_STREQ(targets[1]->name(), "system.cpu1");
+    EXPECT_STREQ(targets[0]->arch(), "riscv");
+    EXPECT_STREQ(targets[1]->arch(), "riscv");
 
     target* targ;
-    targ = sess.find_target("system.cpu");
+    targ = sess.find_target("system.cpu0");
     ASSERT_NE(targ, nullptr);
 
     targ = sess.find_target("undefined-target");
@@ -74,23 +76,31 @@ TEST_F(target_test, targets) {
 
 TEST_F(target_test, target_groups) {
     auto targets = sess.targets();
-    EXPECT_EQ(targets.size(), 1);
+    EXPECT_EQ(targets.size(), 2);
 
-    EXPECT_STREQ(targets.front()->name(), "system.cpu");
-    EXPECT_STREQ(targets.front()->group_name(), "system.cpu");
-    EXPECT_STREQ(targets.front()->arch(), "riscv");
+    EXPECT_STREQ(targets[0]->name(), "system.cpu0");
+    EXPECT_STREQ(targets[1]->name(), "system.cpu1");
+    EXPECT_STREQ(targets[0]->group_name(), "processors");
+    EXPECT_STREQ(targets[1]->group_name(), "processors");
+    EXPECT_STREQ(targets[0]->arch(), "riscv");
 
     auto groups = sess.target_groups();
     ASSERT_EQ(groups.size(), 1);
-    auto group = sess.find_target_group("system.cpu");
+    auto group = sess.find_target_group("processors");
     ASSERT_NE(group, nullptr);
-    EXPECT_EQ(group->name, "system.cpu");
-    ASSERT_EQ(group->targets.size(), 1);
+    EXPECT_EQ(group->name, "processors");
+    ASSERT_EQ(group->targets.size(), 2);
     EXPECT_EQ(group->targets[0], targets.front());
+    EXPECT_NE(group->targets[1], targets.front());
 
-    auto* targ = group->find_target("system.cpu");
+    auto* targ = group->find_target("system.cpu0");
     ASSERT_NE(targ, nullptr);
     EXPECT_EQ(&targ->group(), group);
+
+    targ = group->find_target("system.cpu1");
+    ASSERT_NE(targ, nullptr);
+    EXPECT_EQ(&targ->group(), group);
+
     EXPECT_EQ(group->find_target("undefined-cpu"), nullptr);
 }
 
@@ -107,9 +117,9 @@ TEST_F(target_test, modules) {
     EXPECT_STREQ(mod->name(), "system");
     EXPECT_STREQ(mod->version(), "v1.0");
 
-    mod = sess.find_module("system.cpu");
+    mod = sess.find_module("system.cpu0");
     ASSERT_NE(mod, nullptr);
-    EXPECT_STREQ(mod->name(), "cpu");
+    EXPECT_STREQ(mod->name(), "cpu0");
     EXPECT_STREQ(mod->parent()->name(), "system");
 
     mod = sess.find_module("undefined-module");
@@ -125,11 +135,11 @@ TEST_F(target_test, modules) {
 
 TEST_F(target_test, attributes) {
     attribute* attr;
-    attr = sess.find_attribute("system.cpu.arch");
+    attr = sess.find_attribute("system.cpu0.arch");
     ASSERT_NE(attr, nullptr);
     EXPECT_EQ(attr->get_str(), "riscv");
 
-    vsp::module* cpu = sess.find_module("system.cpu");
+    vsp::module* cpu = sess.find_module("system.cpu0");
     ASSERT_NE(cpu, nullptr);
     EXPECT_NE(cpu->attributes().size(), 0);
     attr = cpu->find_attribute("arch");
@@ -148,12 +158,12 @@ TEST_F(target_test, attributes) {
     EXPECT_EQ(attr, nullptr);
 
     sess.quit();
-    attr = sess.find_attribute("system.cpu.arch");
+    attr = sess.find_attribute("system.cpu0.arch");
     EXPECT_EQ(attr, nullptr);
 }
 
 TEST_F(target_test, architecture) {
-    target* targ = sess.find_target("system.cpu");
+    target* targ = sess.find_target("system.cpu0");
     EXPECT_STREQ(targ->arch(), "riscv");
     sess.quit();
 }
@@ -161,55 +171,55 @@ TEST_F(target_test, architecture) {
 TEST_F(target_test, attribute_types) {
     attribute* attr;
 
-    attr = sess.find_attribute("system.cpu.bool_property");
+    attr = sess.find_attribute("system.cpu0.bool_property");
     ASSERT_NE(attr, nullptr);
     attr->set(true);
     EXPECT_EQ(attr->type(), "bool");
     EXPECT_EQ(attr->get_str(), "true");
 
-    attr = sess.find_attribute("system.cpu.i32_property");
+    attr = sess.find_attribute("system.cpu0.i32_property");
     ASSERT_NE(attr, nullptr);
     attr->set((i32)1);
     EXPECT_EQ(attr->type(), "i32");
     EXPECT_EQ(attr->get_str(), "1");
 
-    attr = sess.find_attribute("system.cpu.i64_property");
+    attr = sess.find_attribute("system.cpu0.i64_property");
     ASSERT_NE(attr, nullptr);
     attr->set((i64)2);
     EXPECT_EQ(attr->type(), "i64");
     EXPECT_EQ(attr->get_str(), "2");
 
-    attr = sess.find_attribute("system.cpu.u32_property");
+    attr = sess.find_attribute("system.cpu0.u32_property");
     ASSERT_NE(attr, nullptr);
     attr->set((u32)3);
     EXPECT_EQ(attr->type(), "u32");
     EXPECT_EQ(attr->get_str(), "3");
 
-    attr = sess.find_attribute("system.cpu.u64_property");
+    attr = sess.find_attribute("system.cpu0.u64_property");
     ASSERT_NE(attr, nullptr);
     attr->set((u64)4);
     EXPECT_EQ(attr->type(), "u64");
     EXPECT_EQ(attr->get_str(), "4");
 
-    attr = sess.find_attribute("system.cpu.float_property");
+    attr = sess.find_attribute("system.cpu0.float_property");
     ASSERT_NE(attr, nullptr);
     attr->set(5.5f);
     EXPECT_EQ(attr->type(), "float");
     EXPECT_EQ(attr->get_str(), "5.5");
 
-    attr = sess.find_attribute("system.cpu.double_property");
+    attr = sess.find_attribute("system.cpu0.double_property");
     ASSERT_NE(attr, nullptr);
     attr->set(6.25);
     EXPECT_EQ(attr->type(), "double");
     EXPECT_EQ(attr->get_str(), "6.25");
 
-    attr = sess.find_attribute("system.cpu.long_double_property");
+    attr = sess.find_attribute("system.cpu0.long_double_property");
     ASSERT_NE(attr, nullptr);
     attr->set(7.125);
     EXPECT_EQ(attr->type(), "unknown"); // currently not supported by VCML
     EXPECT_EQ(attr->get_str(), "7.125");
 
-    attr = sess.find_attribute("system.cpu.i32_vector_property");
+    attr = sess.find_attribute("system.cpu0.i32_vector_property");
     ASSERT_NE(attr, nullptr);
     vector<i32> i32_data(attr->count());
     for (size_t i = 0; i < i32_data.size(); ++i)
@@ -217,7 +227,7 @@ TEST_F(target_test, attribute_types) {
     attr->set(i32_data);
     EXPECT_EQ(attr->get_str(), mwr::join(i32_data, ' '));
 
-    attr = sess.find_attribute("system.cpu.string_vector_property");
+    attr = sess.find_attribute("system.cpu0.string_vector_property");
     ASSERT_NE(attr, nullptr);
     vector<string> string_data(attr->count());
     for (size_t i = 0; i < string_data.size(); ++i)
@@ -225,7 +235,7 @@ TEST_F(target_test, attribute_types) {
     attr->set(string_data);
     EXPECT_EQ(attr->get_str(), mwr::join(string_data, ' '));
 
-    attr = sess.find_attribute("system.cpu.string_property");
+    attr = sess.find_attribute("system.cpu0.string_property");
     ASSERT_NE(attr, nullptr);
     attr->set("test");
     EXPECT_EQ(attr->type(), "string");
@@ -252,10 +262,10 @@ TEST_F(target_test, attribute_types) {
 }
 
 TEST_F(target_test, attributes_while_running) {
-    vsp::module* cpu = sess.find_module("system.cpu");
+    vsp::module* cpu = sess.find_module("system.cpu0");
     EXPECT_NE(cpu, nullptr);
 
-    target* targ = sess.find_target("system.cpu");
+    target* targ = sess.find_target("system.cpu0");
     ASSERT_NE(targ, nullptr);
     EXPECT_NE(targ->write_vmem(0x0, inf_loop_inst), 0);
 
@@ -269,7 +279,7 @@ TEST_F(target_test, attributes_while_running) {
 }
 
 TEST_F(target_test, commands) {
-    vsp::module* cpu = sess.find_module("system.cpu");
+    vsp::module* cpu = sess.find_module("system.cpu0");
     EXPECT_NE(cpu, nullptr);
 
     vsp::module* system = sess.find_module("system");
@@ -279,9 +289,9 @@ TEST_F(target_test, commands) {
     EXPECT_NE(cmds.size(), 0);
 
     command* cmd;
-    cmd = sess.find_command("system.cpu.dump");
+    cmd = sess.find_command("system.cpu0.dump");
     EXPECT_NE(cmd, nullptr);
-    cmd = system->find_command("cpu.dump");
+    cmd = system->find_command("cpu0.dump");
     EXPECT_NE(cmd, nullptr);
 
     cmd = cpu->find_command("undefined-command");
@@ -304,18 +314,18 @@ TEST_F(target_test, commands) {
 
     sess.quit();
 
-    cmd = sess.find_command("system.cpu.dump");
+    cmd = sess.find_command("system.cpu0.dump");
     EXPECT_EQ(cmd, nullptr);
 }
 
 TEST_F(target_test, commands_while_running) {
-    vsp::module* cpu = sess.find_module("system.cpu");
+    vsp::module* cpu = sess.find_module("system.cpu0");
     EXPECT_NE(cpu, nullptr);
 
     command* cmd = cpu->find_command("dump");
     EXPECT_NE(cmd, nullptr);
 
-    target* targ = sess.find_target("system.cpu");
+    target* targ = sess.find_target("system.cpu0");
     ASSERT_NE(targ, nullptr);
     EXPECT_NE(targ->write_vmem(0x0, inf_loop_inst), 0);
 
@@ -325,7 +335,7 @@ TEST_F(target_test, commands_while_running) {
 }
 
 TEST_F(target_test, register_read) {
-    target* targ = sess.find_target("system.cpu");
+    target* targ = sess.find_target("system.cpu0");
     ASSERT_NE(targ, nullptr);
 
     const char* reg_names[33] = {
@@ -353,7 +363,7 @@ TEST_F(target_test, register_read) {
 }
 
 TEST_F(target_test, register_write) {
-    target* targ = sess.find_target("system.cpu");
+    target* targ = sess.find_target("system.cpu0");
     ASSERT_NE(targ, nullptr);
 
     cpureg* reg = targ->find_reg("a5");
@@ -377,7 +387,7 @@ TEST_F(target_test, register_write) {
 }
 
 TEST_F(target_test, register_size) {
-    target* targ = sess.find_target("system.cpu");
+    target* targ = sess.find_target("system.cpu0");
     ASSERT_NE(targ, nullptr);
 
     cpureg* reg = targ->find_reg("a5");
@@ -390,7 +400,7 @@ TEST_F(target_test, register_size) {
 }
 
 TEST_F(target_test, memory_read) {
-    target* targ = sess.find_target("system.cpu");
+    target* targ = sess.find_target("system.cpu0");
     ASSERT_NE(targ, nullptr);
     EXPECT_NE(targ->write_vmem(ADDR_IN_BOUND, data1234), 0);
 
@@ -402,7 +412,7 @@ TEST_F(target_test, memory_read) {
 }
 
 TEST_F(target_test, memory_read_while_running) {
-    target* targ = sess.find_target("system.cpu");
+    target* targ = sess.find_target("system.cpu0");
     ASSERT_NE(targ, nullptr);
     EXPECT_NE(targ->write_vmem(0x0, inf_loop_inst), 0);
 
@@ -414,7 +424,7 @@ TEST_F(target_test, memory_read_while_running) {
 }
 
 TEST_F(target_test, memory_write) {
-    target* targ = sess.find_target("system.cpu");
+    target* targ = sess.find_target("system.cpu0");
     ASSERT_NE(targ, nullptr);
 
     // write in bounds
@@ -425,7 +435,7 @@ TEST_F(target_test, memory_write) {
 }
 
 TEST_F(target_test, memory_write_while_running) {
-    target* targ = sess.find_target("system.cpu");
+    target* targ = sess.find_target("system.cpu0");
     ASSERT_NE(targ, nullptr);
     EXPECT_NE(targ->write_vmem(0x0, inf_loop_inst), 0);
 
@@ -437,7 +447,7 @@ TEST_F(target_test, memory_write_while_running) {
 }
 
 TEST_F(target_test, pmem_read_write) {
-    target* targ = sess.find_target("system.cpu");
+    target* targ = sess.find_target("system.cpu0");
     ASSERT_NE(targ, nullptr);
 
     u64 in_bound_phys = targ->virt_to_phys(ADDR_IN_BOUND);
@@ -462,7 +472,7 @@ TEST_F(target_test, pmem_read_write) {
 }
 
 TEST_F(target_test, breakpoint) {
-    target* targ = sess.find_target("system.cpu");
+    target* targ = sess.find_target("system.cpu0");
     ASSERT_NE(targ, nullptr);
 
     auto bp = targ->insert_breakpoint(0x04);
@@ -478,7 +488,7 @@ TEST_F(target_test, breakpoint) {
 }
 
 TEST_F(target_test, breakpoint_while_running) {
-    target* targ = sess.find_target("system.cpu");
+    target* targ = sess.find_target("system.cpu0");
     ASSERT_NE(targ, nullptr);
     EXPECT_NE(targ->write_vmem(0x0, inf_loop_inst), 0);
 
@@ -489,7 +499,7 @@ TEST_F(target_test, breakpoint_while_running) {
 }
 
 TEST_F(target_test, watchpoint) {
-    target* targ = sess.find_target("system.cpu");
+    target* targ = sess.find_target("system.cpu0");
     ASSERT_NE(targ, nullptr);
 
     auto wp_read = targ->insert_watchpoint(0x20, 0x04, WP_READ);
@@ -521,7 +531,7 @@ TEST_F(target_test, watchpoint) {
 }
 
 TEST_F(target_test, watchpoint_while_running) {
-    target* targ = sess.find_target("system.cpu");
+    target* targ = sess.find_target("system.cpu0");
     ASSERT_NE(targ, nullptr);
     EXPECT_NE(targ->write_vmem(0x0, inf_loop_inst), 0);
 
@@ -532,14 +542,14 @@ TEST_F(target_test, watchpoint_while_running) {
 }
 
 TEST_F(target_test, virt_to_phys) {
-    target* targ = sess.find_target("system.cpu");
+    target* targ = sess.find_target("system.cpu0");
     ASSERT_NE(targ, nullptr);
 
     EXPECT_EQ(targ->virt_to_phys(0x04), 0x04);
 }
 
 TEST_F(target_test, virt_to_phys_while_running) {
-    target* targ = sess.find_target("system.cpu");
+    target* targ = sess.find_target("system.cpu0");
     ASSERT_NE(targ, nullptr);
     EXPECT_NE(targ->write_vmem(0x0, inf_loop_inst), 0);
 
@@ -550,7 +560,7 @@ TEST_F(target_test, virt_to_phys_while_running) {
 }
 
 TEST_F(target_test, program_counter) {
-    target* targ = sess.find_target("system.cpu");
+    target* targ = sess.find_target("system.cpu0");
     ASSERT_NE(targ, nullptr);
     EXPECT_NE(targ->write_vmem(0x0, inf_loop_inst), 0);
 
@@ -565,7 +575,7 @@ TEST_F(target_test, program_counter) {
 }
 
 TEST_F(target_test, stepping) {
-    target* targ = sess.find_target("system.cpu");
+    target* targ = sess.find_target("system.cpu0");
     ASSERT_NE(targ, nullptr);
 
     EXPECT_EQ(targ->write_vmem(0x0, { 0x0, 0x0, 0x0, 0x0 }), 4);     // nop
@@ -588,7 +598,8 @@ TEST_F(target_test, stepping) {
     EXPECT_EQ(targ->get_pc(), 0x4);
 
     // mocking a very slow simulation
-    attribute* wait_per_inst = sess.find_attribute("system.cpu.wait_per_inst");
+    attribute* wait_per_inst = sess.find_attribute(
+        "system.cpu0.wait_per_inst");
     ASSERT_NE(wait_per_inst, nullptr);
     wait_per_inst->set(500'000ull);
     targ->step(3);
@@ -624,7 +635,7 @@ TEST_F(target_test, stepping) {
 }
 
 TEST_F(target_test, stop_with_wait) {
-    target* targ = sess.find_target("system.cpu");
+    target* targ = sess.find_target("system.cpu0");
     ASSERT_NE(targ, nullptr);
 
     EXPECT_NE(targ->write_vmem(0x0, inf_loop_inst), 0);
@@ -637,7 +648,7 @@ TEST_F(target_test, stop_with_wait) {
 }
 
 TEST_F(target_test, stop_immediately) {
-    target* targ = sess.find_target("system.cpu");
+    target* targ = sess.find_target("system.cpu0");
     ASSERT_NE(targ, nullptr);
 
     EXPECT_NE(targ->write_vmem(0x0, inf_loop_inst), 0);
@@ -651,9 +662,9 @@ TEST_F(target_test, stop_immediately) {
 TEST_F(target_test, multi_session) {
     session sess2(HOST, PORT);
 
-    target* targ = sess.find_target("system.cpu");
+    target* targ = sess.find_target("system.cpu0");
     ASSERT_NE(targ, nullptr);
-    target* targ2 = sess2.find_target("system.cpu");
+    target* targ2 = sess2.find_target("system.cpu0");
     ASSERT_NE(targ2, nullptr);
 
     u64 pc_before = targ->get_pc();

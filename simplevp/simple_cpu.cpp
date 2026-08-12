@@ -33,7 +33,8 @@ simple_cpu::simple_cpu(const sc_core::sc_module_name& nm):
     long_double_property("long_double_property", 0.l),
     i32_vector_property("i32_vector_property", { 0, 0, 0 }),
     string_vector_property("string_vector_property", { "", "", "" }),
-    string_property("string_property", "") {
+    string_property("string_property", ""),
+    group("group", "processors") {
     set_little_endian();
 
     define_cpureg_r(0, reg_name(0), sizeof(reg_t));
