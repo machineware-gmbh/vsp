@@ -124,9 +124,9 @@ TEST_F(session_test, modules) {
     EXPECT_STREQ(mod->name(), "system");
     EXPECT_STREQ(mod->version(), "v1.0");
 
-    mod = sess.find_module("system.cpu");
+    mod = sess.find_module("system.cpu0");
     ASSERT_NE(mod, nullptr);
-    EXPECT_STREQ(mod->name(), "cpu");
+    EXPECT_STREQ(mod->name(), "cpu0");
     EXPECT_STREQ(mod->parent()->name(), "system");
 
     mod = sess.find_module("undefined-module");
@@ -142,11 +142,11 @@ TEST_F(session_test, modules) {
 
 TEST_F(session_test, attributes) {
     attribute* attr;
-    attr = sess.find_attribute("system.cpu.arch");
+    attr = sess.find_attribute("system.cpu0.arch");
     ASSERT_NE(attr, nullptr);
     EXPECT_EQ(attr->get_str(), "riscv");
 
-    vsp::module* cpu = sess.find_module("system.cpu");
+    vsp::module* cpu = sess.find_module("system.cpu0");
     ASSERT_NE(cpu, nullptr);
     EXPECT_NE(cpu->attributes().size(), 0);
     attr = cpu->find_attribute("arch");
@@ -165,62 +165,62 @@ TEST_F(session_test, attributes) {
     EXPECT_EQ(attr, nullptr);
 
     sess.quit();
-    attr = sess.find_attribute("system.cpu.arch");
+    attr = sess.find_attribute("system.cpu0.arch");
     EXPECT_EQ(attr, nullptr);
 }
 
 TEST_F(session_test, attribute_types) {
     attribute* attr;
 
-    attr = sess.find_attribute("system.cpu.bool_property");
+    attr = sess.find_attribute("system.cpu0.bool_property");
     ASSERT_NE(attr, nullptr);
     attr->set(true);
     EXPECT_EQ(attr->type(), "bool");
     EXPECT_EQ(attr->get_str(), "true");
 
-    attr = sess.find_attribute("system.cpu.i32_property");
+    attr = sess.find_attribute("system.cpu0.i32_property");
     ASSERT_NE(attr, nullptr);
     attr->set((i32)1);
     EXPECT_EQ(attr->type(), "i32");
     EXPECT_EQ(attr->get_str(), "1");
 
-    attr = sess.find_attribute("system.cpu.i64_property");
+    attr = sess.find_attribute("system.cpu0.i64_property");
     ASSERT_NE(attr, nullptr);
     attr->set((i64)2);
     EXPECT_EQ(attr->type(), "i64");
     EXPECT_EQ(attr->get_str(), "2");
 
-    attr = sess.find_attribute("system.cpu.u32_property");
+    attr = sess.find_attribute("system.cpu0.u32_property");
     ASSERT_NE(attr, nullptr);
     attr->set((u32)3);
     EXPECT_EQ(attr->type(), "u32");
     EXPECT_EQ(attr->get_str(), "3");
 
-    attr = sess.find_attribute("system.cpu.u64_property");
+    attr = sess.find_attribute("system.cpu0.u64_property");
     ASSERT_NE(attr, nullptr);
     attr->set((u64)4);
     EXPECT_EQ(attr->type(), "u64");
     EXPECT_EQ(attr->get_str(), "4");
 
-    attr = sess.find_attribute("system.cpu.float_property");
+    attr = sess.find_attribute("system.cpu0.float_property");
     ASSERT_NE(attr, nullptr);
     attr->set(5.5f);
     EXPECT_EQ(attr->type(), "float");
     EXPECT_EQ(attr->get_str(), "5.5");
 
-    attr = sess.find_attribute("system.cpu.double_property");
+    attr = sess.find_attribute("system.cpu0.double_property");
     ASSERT_NE(attr, nullptr);
     attr->set(6.25);
     EXPECT_EQ(attr->type(), "double");
     EXPECT_EQ(attr->get_str(), "6.25");
 
-    attr = sess.find_attribute("system.cpu.long_double_property");
+    attr = sess.find_attribute("system.cpu0.long_double_property");
     ASSERT_NE(attr, nullptr);
     attr->set(7.125);
     EXPECT_EQ(attr->type(), "unknown"); // currently not supported by VCML
     EXPECT_EQ(attr->get_str(), "7.125");
 
-    attr = sess.find_attribute("system.cpu.i32_vector_property");
+    attr = sess.find_attribute("system.cpu0.i32_vector_property");
     ASSERT_NE(attr, nullptr);
     vector<i32> i32_data(attr->count());
     for (size_t i = 0; i < i32_data.size(); ++i)
@@ -228,7 +228,7 @@ TEST_F(session_test, attribute_types) {
     attr->set(i32_data);
     EXPECT_EQ(attr->get_str(), mwr::join(i32_data, ' '));
 
-    attr = sess.find_attribute("system.cpu.string_vector_property");
+    attr = sess.find_attribute("system.cpu0.string_vector_property");
     ASSERT_NE(attr, nullptr);
     vector<string> string_data(attr->count());
     for (size_t i = 0; i < string_data.size(); ++i)
@@ -236,7 +236,7 @@ TEST_F(session_test, attribute_types) {
     attr->set(string_data);
     EXPECT_EQ(attr->get_str(), mwr::join(string_data, ' '));
 
-    attr = sess.find_attribute("system.cpu.string_property");
+    attr = sess.find_attribute("system.cpu0.string_property");
     ASSERT_NE(attr, nullptr);
     attr->set("test");
     EXPECT_EQ(attr->type(), "string");
@@ -266,7 +266,7 @@ TEST_F(session_test, attributes_while_running) {
     vsp::module* cpu = sess.find_module("system.cpu");
     EXPECT_NE(cpu, nullptr);
 
-    target* targ = sess.find_target("system.cpu");
+    target* targ = sess.find_target("system.cpu0");
     ASSERT_NE(targ, nullptr);
 
     const vector<u8> inf_loop_inst{ 0x00, 0x00, 0x00, 0x20 };
@@ -292,7 +292,7 @@ TEST_F(session_test, commands) {
     EXPECT_NE(cmds.size(), 0);
 
     command* cmd;
-    cmd = sess.find_command("system.cpu.dump");
+    cmd = sess.find_command("system.cpu0.dump");
     EXPECT_NE(cmd, nullptr);
     cmd = system->find_command("cpu.dump");
     EXPECT_NE(cmd, nullptr);
@@ -322,6 +322,6 @@ TEST_F(session_test, commands) {
 
     sess.quit();
 
-    cmd = sess.find_command("system.cpu.dump");
+    cmd = sess.find_command("system.cpu0.dump");
     EXPECT_EQ(cmd, nullptr);
 }
