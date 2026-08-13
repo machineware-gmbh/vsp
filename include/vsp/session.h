@@ -131,8 +131,6 @@ public:
     void stepi(const target& t);
     void step(const vector<const target*>& targets);
 
-    void step(const vector<target*>& targets);
-
     void run();
     bool check_running();
     void stop();
