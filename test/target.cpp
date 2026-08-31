@@ -645,7 +645,7 @@ TEST_F(target_test, multi_target_stepping) {
     u64 prev_pc0 = targ0->get_pc();
     u64 prev_pc1 = targ1->get_pc();
 
-    sess.step({ targ0, targ1 });
+    sess.stepi({ targ0, targ1 });
     ASSERT_TRUE(wait_for_target());
     EXPECT_EQ(sess.reason().reason, VSP_STOP_REASON_TARGET_STEP_COMPLETE);
 
@@ -657,11 +657,11 @@ TEST_F(target_test, multi_target_stepping) {
     prev_pc0 = targ0->get_pc();
     prev_pc1 = targ1->get_pc();
 
-    sess.step({ targ0 });
+    sess.stepi(*targ0);
     ASSERT_TRUE(wait_for_target());
     EXPECT_EQ(sess.reason().reason, VSP_STOP_REASON_TARGET_STEP_COMPLETE);
 
-    sess.step({ targ1 });
+    sess.stepi(*targ1);
     ASSERT_TRUE(wait_for_target());
     EXPECT_EQ(sess.reason().reason, VSP_STOP_REASON_TARGET_STEP_COMPLETE);
 

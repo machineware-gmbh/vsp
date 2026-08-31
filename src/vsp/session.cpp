@@ -365,10 +365,10 @@ void session::step(u64 ns) {
 }
 
 void session::stepi(const target& t) {
-    step({ &t });
+    stepi({ &t });
 }
 
-void session::step(const vector<const target*>& targets) {
+void session::stepi(const vector<const target*>& targets) {
     update_status();
     if (!m_running && !targets.empty()) {
         m_running = true;

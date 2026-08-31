@@ -129,7 +129,7 @@ public:
     void step();
     void step(u64 ns);
     void stepi(const target& t);
-    void step(const vector<const target*>& targets);
+    void stepi(const vector<const target*>& targets);
 
     void run();
     bool check_running();
