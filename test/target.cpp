@@ -614,24 +614,61 @@ TEST_F(target_test, stepping) {
     ASSERT_TRUE(wait_for_target());
     EXPECT_EQ(targ->get_pc(), 0x4);
 
-    // step quantum blocking
+    // step quantum
     unsigned long long st_ns = sess.get_time_ns();
     unsigned long long quantum_ns = 2;
     sess.set_quantum(quantum_ns);
     EXPECT_EQ(sess.get_quantum_ns(), quantum_ns);
-    sess.step(true);
-    EXPECT_FALSE(sess.check_running());
-    EXPECT_EQ(sess.reason().reason, VSP_STOP_REASON_STEP_COMPLETE);
-    EXPECT_EQ(sess.get_time_ns(), st_ns + quantum_ns);
-
-    // step quantum non-blocking
-    st_ns = sess.get_time_ns();
-    sess.step(false);
-    // EXPECT_TRUE(sess.running());
+    sess.step();
+    EXPECT_TRUE(sess.check_running());
     ASSERT_TRUE(wait_for_target());
     EXPECT_FALSE(sess.check_running());
     EXPECT_EQ(sess.reason().reason, VSP_STOP_REASON_STEP_COMPLETE);
     EXPECT_EQ(sess.get_time_ns(), st_ns + quantum_ns);
+}
+
+TEST_F(target_test, multi_target_stepping) {
+    target* targ0 = sess.find_target("system.cpu0");
+    ASSERT_NE(targ0, nullptr);
+
+    target* targ1 = sess.find_target("system.cpu1");
+    ASSERT_NE(targ1, nullptr);
+
+    EXPECT_EQ(targ0->get_pc(), 0x0);
+    EXPECT_EQ(targ0->get_pc(), targ1->get_pc());
+
+    EXPECT_EQ(targ0->write_vmem(0x0, { 0x0, 0x0, 0x0, 0x0 }), 4);      // nop
+    EXPECT_EQ(targ0->write_vmem(0x4, { 0x0, 0x0, 0x0, 0x0 }), 4);      // nop
+    EXPECT_EQ(targ0->write_vmem(0x8, { 0x0, 0x0, 0x0, 0x0 }), 4);      // nop
+    EXPECT_EQ(targ0->write_vmem(0x10, { 0xf4, 0xff, 0xff, 0x20 }), 4); // back
+
+    u64 prev_pc0 = targ0->get_pc();
+    u64 prev_pc1 = targ1->get_pc();
+
+    sess.stepi({ targ0, targ1 });
+    ASSERT_TRUE(wait_for_target());
+    EXPECT_EQ(sess.reason().reason, VSP_STOP_REASON_TARGET_STEP_COMPLETE);
+
+    size_t total_steps = 0;
+    total_steps += (targ0->get_pc() - prev_pc0) / 4;
+    total_steps += (targ1->get_pc() - prev_pc1) / 4;
+    EXPECT_EQ(total_steps, 1ull);
+
+    prev_pc0 = targ0->get_pc();
+    prev_pc1 = targ1->get_pc();
+
+    sess.stepi(*targ0);
+    ASSERT_TRUE(wait_for_target());
+    EXPECT_EQ(sess.reason().reason, VSP_STOP_REASON_TARGET_STEP_COMPLETE);
+
+    sess.stepi(*targ1);
+    ASSERT_TRUE(wait_for_target());
+    EXPECT_EQ(sess.reason().reason, VSP_STOP_REASON_TARGET_STEP_COMPLETE);
+
+    total_steps = 0;
+    total_steps += (targ0->get_pc() - prev_pc0) / 4;
+    total_steps += (targ1->get_pc() - prev_pc1) / 4;
+    EXPECT_NE(total_steps, 1ull);
 }
 
 TEST_F(target_test, stop_with_wait) {

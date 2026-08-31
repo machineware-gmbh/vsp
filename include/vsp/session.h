@@ -126,9 +126,10 @@ public:
     void connect(const string& host, u16 port);
     void disconnect() noexcept;
 
-    void step(bool block = true);
-    void step(u64 ns, bool block = true);
+    void step();
+    void step(u64 ns);
     void stepi(const target& t);
+    void stepi(const vector<const target*>& targets);
 
     void run();
     bool check_running();
