@@ -221,6 +221,24 @@ void session::update_reason(const string& reason) {
     m_reason = newreason;
 }
 
+void session::wait_timeout(u64 timeout_ms) {
+    if (timeout_ms == 0)
+        return;
+
+    u64 deadline_ms = mwr::U64_MAX;
+    if (timeout_ms < mwr::U64_MAX)
+        deadline_ms = mwr::timestamp_ms() + timeout_ms;
+
+    while (m_running) {
+        update_status();
+        if (m_running) {
+            if (mwr::timestamp_ms() > deadline_ms)
+                MWR_REPORT("timeout expired");
+            mwr::usleep(100);
+        }
+    }
+}
+
 static module* xml_parse_modules(connection& conn, const pugi::xml_node& node,
                                  module* parent) {
     module* mod = new module(node.attribute("name").value(), conn, parent,
@@ -352,35 +370,36 @@ void session::quit() {
     disconnect();
 }
 
-void session::step() {
-    step(get_quantum_ns());
+void session::step(u64 timeout_ms) {
+    step(get_quantum_ns(), timeout_ms);
 }
 
-void session::step(u64 ns) {
+void session::step(u64 duration_ns, u64 timeout_ms) {
     update_status();
     if (!m_running) {
         m_running = true;
-        m_conn.command("resume," + to_string(ns) + "ns");
+        m_conn.command("resume," + to_string(duration_ns) + "ns");
     }
+
+    if (timeout_ms > 0)
+        wait_timeout(timeout_ms);
 }
 
-void session::stepi(const target& t) {
-    stepi({ &t });
+void session::stepi(const target& t, u64 timeout_ms) {
+    stepi({ &t }, timeout_ms);
 }
 
-void session::stepi(const vector<const target*>& targets) {
-    update_status();
-    if (!m_running && !targets.empty()) {
-        m_running = true;
+void session::stepi(const vector<const target*>& targets, u64 timeout_ms) {
+    MWR_ERROR_ON(targets.empty(), "no targets to step");
 
-        stringstream ss;
-        ss << "step";
+    stringstream ss;
+    ss << "step";
+    for (const auto* tgt : targets)
+        ss << ',' << tgt->name();
+    m_conn.command(ss.str());
 
-        for (const auto* tgt : targets)
-            ss << ',' << tgt->name();
-
-        m_conn.command(ss.str());
-    }
+    if (timeout_ms > 0)
+        wait_timeout(timeout_ms);
 }
 
 void session::run() {

@@ -116,7 +116,7 @@ bool session::handle_read(const string& args) {
 }
 
 bool session::handle_step(const string& args) {
-    m_session->step();
+    m_session->step(-1);
     return true;
 }
 

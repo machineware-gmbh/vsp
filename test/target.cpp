@@ -583,7 +583,7 @@ TEST_F(target_test, stepping) {
     EXPECT_EQ(targ->write_vmem(0x8, { 0x0, 0x0, 0x0, 0x0 }), 4);     // nop
     EXPECT_EQ(targ->write_vmem(0xc, { 0xf4, 0xff, 0xff, 0x20 }), 4); // back
 
-    sess.stepi(*targ);
+    sess.stepi(*targ, 0);
     ASSERT_TRUE(wait_for_target());
 
     EXPECT_EQ(sess.reason().reason, VSP_STOP_REASON_TARGET_STEP_COMPLETE);
@@ -619,7 +619,7 @@ TEST_F(target_test, stepping) {
     unsigned long long quantum_ns = 2;
     sess.set_quantum(quantum_ns);
     EXPECT_EQ(sess.get_quantum_ns(), quantum_ns);
-    sess.step();
+    sess.step(0);
     EXPECT_TRUE(sess.check_running());
     ASSERT_TRUE(wait_for_target());
     EXPECT_FALSE(sess.check_running());
@@ -645,7 +645,7 @@ TEST_F(target_test, multi_target_stepping) {
     u64 prev_pc0 = targ0->get_pc();
     u64 prev_pc1 = targ1->get_pc();
 
-    sess.stepi({ targ0, targ1 });
+    sess.stepi({ targ0, targ1 }, 0);
     ASSERT_TRUE(wait_for_target());
     EXPECT_EQ(sess.reason().reason, VSP_STOP_REASON_TARGET_STEP_COMPLETE);
 
@@ -657,11 +657,11 @@ TEST_F(target_test, multi_target_stepping) {
     prev_pc0 = targ0->get_pc();
     prev_pc1 = targ1->get_pc();
 
-    sess.stepi(*targ0);
+    sess.stepi(*targ0, 0);
     ASSERT_TRUE(wait_for_target());
     EXPECT_EQ(sess.reason().reason, VSP_STOP_REASON_TARGET_STEP_COMPLETE);
 
-    sess.stepi(*targ1);
+    sess.stepi(*targ1, 0);
     ASSERT_TRUE(wait_for_target());
     EXPECT_EQ(sess.reason().reason, VSP_STOP_REASON_TARGET_STEP_COMPLETE);
 

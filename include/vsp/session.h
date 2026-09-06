@@ -97,6 +97,8 @@ private:
     void update_modules();
     void update_reason(const string& reason);
 
+    void wait_timeout(u64 timeout_ms);
+
 public:
     session();
     session(const session_info& info);
@@ -126,10 +128,11 @@ public:
     void connect(const string& host, u16 port);
     void disconnect() noexcept;
 
-    void step();
-    void step(u64 ns);
-    void stepi(const target& t);
-    void stepi(const vector<const target*>& targets);
+    void step(u64 timeout_ms);
+    void step(u64 duration_ns, u64 timeout_ms);
+
+    void stepi(const target& t, u64 timeout_ms);
+    void stepi(const vector<const target*>& targets, u64 timeout_ms);
 
     void run();
     bool check_running();
