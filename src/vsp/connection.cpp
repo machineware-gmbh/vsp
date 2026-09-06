@@ -14,34 +14,14 @@ namespace vsp {
 
 static const int MAX_RETRIES = 5;
 
-connection::connection(): m_mtx(), m_socket() {
-    // nothing to do
-}
-
-connection::connection(const string& host, u16 port): connection() {
-    connect(host, port);
-}
-
-connection::connection(connection&& other) noexcept:
-    m_mtx(), m_socket(std::move(other.m_socket)) {
-}
-
-void connection::connect(const string& host, u16 port) {
-    m_socket.connect(host, port);
-}
-
-void connection::disconnect() noexcept {
-    m_socket.disconnect();
-}
-
-u8 connection::checksum(const string& s) {
+static u8 checksum(const string& s) {
     u8 result = 0;
     for (const char& c : s)
         result += static_cast<u8>(c);
     return result;
 }
 
-string connection::escape(const string& s) {
+static string rsp_escape(const string& s) {
     string result;
 
     for (char ch : s) {
@@ -53,7 +33,17 @@ string connection::escape(const string& s) {
     return result;
 }
 
-vector<string> connection::decompose(const string& s) {
+static string vsp_escape(const string& s) {
+    string result;
+    for (char ch : s) {
+        if (ch == '\\' || ch == ',')
+            result += '\\';
+        result += ch;
+    }
+    return result;
+}
+
+static vector<string> decompose(const string& s) {
     vector<string> l;
     string b;
     size_t i = 0;
@@ -74,6 +64,26 @@ vector<string> connection::decompose(const string& s) {
     l.push_back(std::move(b));
 
     return l;
+}
+
+connection::connection(): m_mtx(), m_socket() {
+    // nothing to do
+}
+
+connection::connection(const string& host, u16 port): connection() {
+    connect(host, port);
+}
+
+connection::connection(connection&& other) noexcept:
+    m_mtx(), m_socket(std::move(other.m_socket)) {
+}
+
+void connection::connect(const string& host, u16 port) {
+    m_socket.connect(host, port);
+}
+
+void connection::disconnect() noexcept {
+    m_socket.disconnect();
 }
 
 string connection::recv() {
@@ -126,7 +136,7 @@ void connection::send(const string& data) {
     if (!m_socket.is_connected())
         MWR_REPORT("not connected");
 
-    string escaped_data = escape(data);
+    string escaped_data = rsp_escape(data);
     stringstream ss;
 
     ss << '$' << escaped_data << '#' << std::hex << std::setw(2)
@@ -146,9 +156,17 @@ void connection::send(const string& data) {
     }
 }
 
-vector<string> connection::command(const string& cmd) {
+vector<string> connection::command(const vector<string>& cmd) {
     lock_guard lk(m_mtx);
-    send(cmd);
+
+    string escaped_cmd;
+    for (size_t i = 0; i < cmd.size(); ++i) {
+        if (i > 0)
+            escaped_cmd += ',';
+        escaped_cmd += vsp_escape(cmd[i]);
+    }
+
+    send(escaped_cmd);
     auto resp = decompose(recv());
     if (resp.empty())
         MWR_REPORT("server sent empty response");

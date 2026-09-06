@@ -54,7 +54,7 @@ target::~target() {
 }
 
 void target::update_regs() {
-    auto resp = m_conn.command("lreg," + m_name);
+    auto resp = m_conn.command({ "lreg", m_name });
     for (size_t i = 1; i < resp.size(); ++i) {
         size_t regsize = 0;
         const string& regname = resp[i];
@@ -69,24 +69,24 @@ void target::update_regs() {
 }
 
 void target::fetch_arch() {
-    auto resp = m_conn.command("version");
+    auto resp = m_conn.command({ "version" });
     int protover = resp.size() > 3 ? stoi(resp[3]) : 0;
 
     if (protover < 2) {
-        resp = m_conn.command(mkstr("geta,%s.arch", m_name.c_str()));
+        resp = m_conn.command({ "geta", mkstr("%s.arch", m_name.c_str()) });
         MWR_REPORT_ON(resp.size() != 2, "%s: malformed response", __func__);
         m_arch = resp[1];
         return;
     }
 
-    resp = m_conn.command("arch," + m_name);
+    resp = m_conn.command({ "arch", m_name });
     MWR_REPORT_ON(resp.size() < 2, "malfomed arch response");
     m_arch = resp[1];
 }
 
 void target::step() {
     try {
-        auto resp = m_conn.command("step," + m_name);
+        auto resp = m_conn.command({ "step", m_name });
     } catch (std::exception& ex) {
         string err = ex.what();
         MWR_REPORT_ON(err != "simulation running", "step failed");
@@ -103,7 +103,7 @@ void target::step(size_t steps) {
             err = "";
 
             try {
-                auto resp = m_conn.command("step," + m_name);
+                auto resp = m_conn.command({ "step", m_name });
             } catch (std::exception& ex) {
                 err = ex.what();
                 MWR_REPORT_ON(err != "simulation running", "step failed");
@@ -115,13 +115,13 @@ void target::step(size_t steps) {
 }
 
 u64 target::virt_to_phys(u64 va) {
-    auto resp = m_conn.command("vapa," + m_name + "," + to_string(va));
+    auto resp = m_conn.command({ "vapa", m_name, to_string(va) });
     MWR_REPORT_ON(resp.size() < 2, "%s: malformed response", __func__);
     return stoull(resp[1], nullptr, 16);
 }
 
 breakpoint target::insert_breakpoint(u64 addr) {
-    auto resp = m_conn.command("mkbp," + m_name + "," + to_string(addr));
+    auto resp = m_conn.command({ "mkbp", m_name, to_string(addr) });
     MWR_REPORT_ON(resp.size() < 2, "%s: malformed response", __func__);
     const string& msg = resp[1];
     string bpstr = msg.substr(msg.find_last_of(' ') + 1);
@@ -133,13 +133,13 @@ breakpoint target::insert_breakpoint(u64 addr) {
 }
 
 void target::remove_breakpoint(const breakpoint& bp) {
-    m_conn.command("rmbp," + to_string(bp.id));
+    m_conn.command({ "rmbp", to_string(bp.id) });
 }
 
 watchpoint target::insert_watchpoint(u64 base, u64 size,
                                      watchpoint_type type) {
-    auto resp = m_conn.command("mkwp," + m_name + "," + to_string(base) + "," +
-                               to_string(size) + "," + wp_type_str(type));
+    auto resp = m_conn.command({ "mkwp", m_name, to_string(base),
+                                 to_string(size), wp_type_str(type) });
     MWR_REPORT_ON(resp.size() < 2, "%s: malformed response", __func__);
     const string& msg = resp[1];
     string wpstr = msg.substr(msg.find_last_of(' ') + 1);
@@ -153,14 +153,13 @@ watchpoint target::insert_watchpoint(u64 base, u64 size,
 }
 
 void target::remove_watchpoint(const watchpoint& wp) {
-    m_conn.command("rmwp," + to_string(wp.id) + "," + wp_type_str(wp.type));
+    m_conn.command({ "rmwp", to_string(wp.id), wp_type_str(wp.type) });
 }
 
 vector<u8> target::read_vmem(u64 vaddr, size_t size) {
     vector<u8> ret;
-    string cmd = "vread," + m_name + "," + to_string(vaddr) + ',' +
-                 to_string(size);
-    auto resp = m_conn.command(cmd);
+    auto resp = m_conn.command(
+        { "vread", m_name, to_string(vaddr), to_string(size) });
     if (resp.size() != size + 1)
         MWR_REPORT("%s: malformed response", __func__);
 
@@ -171,12 +170,12 @@ vector<u8> target::read_vmem(u64 vaddr, size_t size) {
 }
 
 size_t target::write_vmem(u64 vaddr, const vector<u8>& data) {
-    stringstream ss;
-    ss << "vwrite," << m_name << ',' << vaddr;
-    for (auto& v : data)
-        ss << ',' << static_cast<u32>(v);
+    vector<string> cmd = { "vwrite", m_name, to_string(vaddr) };
+    cmd.reserve(3 + data.size());
+    for (u8 v : data)
+        cmd.push_back(to_string((int)v));
 
-    auto resp = m_conn.command(ss.str());
+    auto resp = m_conn.command(cmd);
     MWR_REPORT_ON(resp.size() < 2, "%s: malformed response", __func__);
 
     auto parts = split(resp[1], ' ');
@@ -189,9 +188,8 @@ size_t target::write_vmem(u64 vaddr, const vector<u8>& data) {
 
 vector<u8> target::read_pmem(u64 paddr, size_t size) {
     vector<u8> ret;
-    string cmd = "pread," + m_name + "," + to_string(paddr) + ',' +
-                 to_string(size);
-    auto resp = m_conn.command(cmd);
+    auto resp = m_conn.command(
+        { "pread", m_name, to_string(paddr), to_string(size) });
     if (resp.size() != size + 1)
         MWR_REPORT("%s malformed response", __func__);
 
@@ -203,12 +201,12 @@ vector<u8> target::read_pmem(u64 paddr, size_t size) {
 }
 
 size_t target::write_pmem(u64 paddr, const vector<u8>& data) {
-    stringstream ss;
-    ss << "pwrite," << m_name << ',' << paddr;
-    for (auto& v : data)
-        ss << ',' << static_cast<u32>(v);
+    vector<string> cmd = { "pwrite", m_name, to_string(paddr) };
+    cmd.reserve(3 + data.size());
+    for (u8 v : data)
+        cmd.push_back(to_string((int)v));
 
-    auto resp = m_conn.command(ss.str());
+    auto resp = m_conn.command(cmd);
     MWR_REPORT_ON(resp.size() < 2, "%s: malformed response", __func__);
 
     auto parts = split(resp[1], ' ');

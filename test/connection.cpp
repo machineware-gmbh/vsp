@@ -83,7 +83,7 @@ TEST(connection, server_disconnect) {
     EXPECT_FALSE(server.is_connected());
     EXPECT_TRUE(conn.is_connected());
 
-    EXPECT_THROW(conn.command("test"), std::exception);
+    EXPECT_THROW(conn.command({ "test" }), std::exception);
 }
 
 TEST(connection, send) {
@@ -112,7 +112,7 @@ TEST(connection, send) {
         return server.recv_char(client) == '+';
     });
 
-    auto resp = conn.command("test");
+    auto resp = conn.command({ "test" });
     correct.wait();
     EXPECT_TRUE(correct.get());
     EXPECT_EQ(resp.size(), 2);
@@ -158,7 +158,7 @@ TEST(connection, nack) {
 
         return server.recv_char(client) == '+';
     });
-    auto resp = conn.command("test");
+    auto resp = conn.command({ "test" });
     correct.wait();
     EXPECT_TRUE(correct.get());
 

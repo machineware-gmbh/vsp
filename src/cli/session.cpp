@@ -71,7 +71,7 @@ bool session::handle_list(const string& args) {
                  << termcolors::CLEAR;
 
             if (cinfo)
-                cout << " " << cinfo->execute(c->name());
+                cout << " " << cinfo->execute({ c->name() });
             cout << endl;
         }
     }

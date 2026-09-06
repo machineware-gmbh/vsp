@@ -258,6 +258,12 @@ TEST_F(session_test, attribute_types) {
     attr->set("$#*}");
     EXPECT_EQ(attr->get_str(), "$#*}");
 
+    attr->set("a,b");
+    EXPECT_EQ(attr->get_str(), "a,b");
+
+    attr->set("\\");
+    EXPECT_EQ(attr->get_str(), "\\");
+
     attr->set("\\n");
     EXPECT_EQ(attr->get_str(), "\\n");
 }

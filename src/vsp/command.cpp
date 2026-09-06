@@ -24,20 +24,14 @@ string command::execute(const vector<string>& args) {
         return "need " + to_string(m_argc) + " arguments for " + name() +
                ", have " + to_string(args.size());
     }
-    return execute(mwr::join(args, ','));
-}
 
-string command::execute(const string& args) {
-    auto resp = m_conn.command("exec," + m_parent->hierarchy_name() + "," +
-                               name() + (args.empty() ? "" : "," + args));
+    vector<string> req{ "exec", m_parent->hierarchy_name(), name() };
+    req.insert(req.end(), args.begin(), args.end());
+    auto resp = m_conn.command(req);
 
     stringstream ss;
-    for (size_t i = 1; i < resp.size(); ++i) {
+    for (size_t i = 1; i < resp.size(); ++i)
         ss << resp[i];
-        if (i < resp.size() - 1)
-            ss << ",";
-    }
-
     return ss.str();
 }
 

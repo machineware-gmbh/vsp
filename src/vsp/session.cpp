@@ -106,7 +106,7 @@ session::~session() {
 }
 
 void session::update_version() {
-    auto resp = m_conn.command("version");
+    auto resp = m_conn.command({ "version" });
     MWR_REPORT_ON(resp.size() < 3, "malformed version response");
 
     m_sysc_version = resp[1];
@@ -117,7 +117,7 @@ void session::update_version() {
 }
 
 void session::update_status() {
-    auto resp = m_conn.command("status");
+    auto resp = m_conn.command({ "status" });
 
     if (!is_connected()) {
         m_running = false;
@@ -265,7 +265,7 @@ static module* xml_parse_modules(connection& conn, const pugi::xml_node& node,
 }
 
 void session::update_modules() {
-    auto resp = m_conn.command("list,xml");
+    auto resp = m_conn.command({ "list", "xml" });
     MWR_REPORT_ON(resp.size() < 2, "malformed 'list' response");
 
     pugi::xml_document list;
@@ -313,13 +313,13 @@ u64 session::get_cycle_count() {
 }
 
 u64 session::get_quantum_ns() {
-    auto resp = m_conn.command("getq");
+    auto resp = m_conn.command({ "getq" });
     MWR_REPORT_ON(resp.size() < 2, "malfomed get-quantum response");
     return stoull(resp[1]);
 }
 
 void session::set_quantum(u64 ns) {
-    m_conn.command("setq," + to_string(ns));
+    m_conn.command({ "setq", to_string(ns) });
 }
 
 void session::connect(const session_info& info) {
@@ -362,9 +362,9 @@ bool session::is_connected() const {
 
 void session::quit() {
     try {
-        m_conn.command("quit");
+        m_conn.command({ "quit" });
     } catch (mwr::report&) {
-        // excpect disconnect
+        // expect disconnect
     }
 
     disconnect();
@@ -378,7 +378,7 @@ void session::step(u64 duration_ns, u64 timeout_ms) {
     update_status();
     if (!m_running) {
         m_running = true;
-        m_conn.command("resume," + to_string(duration_ns) + "ns");
+        m_conn.command({ "resume", to_string(duration_ns) + "ns" });
     }
 
     if (timeout_ms > 0)
@@ -392,11 +392,11 @@ void session::stepi(const target& t, u64 timeout_ms) {
 void session::stepi(const vector<const target*>& targets, u64 timeout_ms) {
     MWR_ERROR_ON(targets.empty(), "no targets to step");
 
-    stringstream ss;
-    ss << "step";
+    vector<string> cmd = { "step" };
+    cmd.reserve(1 + targets.size());
     for (const auto* tgt : targets)
-        ss << ',' << tgt->name();
-    m_conn.command(ss.str());
+        cmd.push_back(tgt->name());
+    m_conn.command(cmd);
 
     if (timeout_ms > 0)
         wait_timeout(timeout_ms);
@@ -406,7 +406,7 @@ void session::run() {
     update_status();
     if (!m_running) {
         m_running = true;
-        m_conn.command("resume");
+        m_conn.command({ "resume" });
     }
 }
 
@@ -418,16 +418,16 @@ bool session::check_running() {
 void session::stop() {
     update_status();
     if (m_running)
-        m_conn.command("stop");
+        m_conn.command({ "stop" });
 }
 
 void session::set_stop_mode(vsp_stop_mode mode) {
     switch (mode) {
     case VSP_STOP_MODE_SOFT:
-        m_conn.command("setsm,soft");
+        m_conn.command({ "setsm", "soft" });
         break;
     case VSP_STOP_MODE_HARD:
-        m_conn.command("setsm,hard");
+        m_conn.command({ "setsm", "hard" });
         break;
     default:
         MWR_ERROR("invalid stop mode: %d", mode);

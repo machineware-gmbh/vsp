@@ -29,7 +29,7 @@ vector<string> attribute::get() {
     if (m_count == 0)
         return vector<string>();
 
-    auto resp = m_conn.command("geta," + hierarchy_name());
+    auto resp = m_conn.command({ "geta", hierarchy_name() });
     MWR_REPORT_ON(resp.size() != 2, "%s: malformed response", __func__);
     resp.erase(resp.begin());
     return resp;
@@ -51,22 +51,6 @@ string attribute::get_str() {
     } catch (...) {
         return "<error>";
     }
-}
-
-void attribute::set_escaped(const string& val) {
-    m_conn.command("seta," + hierarchy_name() + "," + val);
-}
-
-void attribute::set(const char* val) {
-    set(string(val));
-}
-
-void attribute::set(const string& val) {
-    set_escaped(mwr::escape(val, ","));
-}
-
-void attribute::set(bool val) {
-    set_escaped(string(val ? "true" : "false"));
 }
 
 } // namespace vsp

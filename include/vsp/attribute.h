@@ -38,7 +38,6 @@ public:
     vector<string> get();
     string get_str();
 
-    void set_escaped(const string& val);
     void set(const string& val);
     void set(const char* val);
     void set(bool val);
@@ -48,27 +47,42 @@ public:
 
     template <typename T>
     void set(const vector<T>& val);
+
+    void set(const vector<string>& val);
 };
 
-template <typename T>
-void attribute::set(T val) {
-    set_escaped(to_string(val));
+inline void attribute::set(const string& val) {
+    vector<string> vec = { val };
+    set(vec);
+}
+
+inline void attribute::set(const char* val) {
+    set(string(val));
+}
+
+inline void attribute::set(bool val) {
+    set(val ? "true" : "false");
 }
 
 template <typename T>
-void attribute::set(const vector<T>& val) {
-    MWR_ERROR_ON(val.size() != m_count, "size missmatch");
+inline void attribute::set(T val) {
+    set(to_string(val));
+}
 
-    if (val.empty())
-        return;
+template <typename T>
+inline void attribute::set(const vector<T>& val) {
+    vector<string> vec;
+    vec.reserve(m_count);
+    for (const auto& v : val)
+        vec.push_back(to_string(v));
+    set(vec);
+}
 
-    std::stringstream ss;
-
-    ss << val[0];
-    for (size_t i = 1; i < val.size(); ++i)
-        ss << ',' << val[i];
-
-    set_escaped(ss.str());
+inline void attribute::set(const vector<string>& val) {
+    MWR_ERROR_ON(val.size() != m_count, "size mismatch");
+    vector<string> cmd = { "seta", hierarchy_name() };
+    cmd.insert(cmd.end(), val.begin(), val.end());
+    m_conn.command(cmd);
 }
 
 } // namespace vsp

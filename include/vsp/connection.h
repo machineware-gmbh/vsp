@@ -29,10 +29,6 @@ private:
     string recv();
     void send(const string& data);
 
-    static u8 checksum(const string& s);
-    static string escape(const string& s);
-    static vector<string> decompose(const string& s);
-
 public:
     connection();
     connection(const string& host, u16 port);
@@ -51,7 +47,7 @@ public:
     void connect(const string& host, u16 port);
     void disconnect() noexcept;
 
-    vector<string> command(const string& cmd);
+    vector<string> command(const vector<string>& cmd);
 };
 
 } // namespace vsp

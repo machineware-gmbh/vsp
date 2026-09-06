@@ -21,8 +21,7 @@ cpureg::cpureg(connection& conn, const string& name, target& parent,
 }
 
 void cpureg::update_size() {
-    auto resp = m_conn.command("getr," + string(m_parent.name()) + "," +
-                               m_name);
+    auto resp = m_conn.command({ "getr", string(m_parent.name()), m_name });
     m_size = resp.size() - 1;
 }
 
@@ -32,8 +31,7 @@ size_t cpureg::size() const {
 
 void cpureg::get_value(vector<u8>& ret) {
     ret.clear();
-    auto resp = m_conn.command("getr," + string(m_parent.name()) + "," +
-                               m_name);
+    auto resp = m_conn.command({ "getr", string(m_parent.name()), m_name });
     if (resp.size() != m_size + 1)
         MWR_REPORT("%s: malformed response", __func__);
 
@@ -46,12 +44,12 @@ void cpureg::set_value(const vector<u8>& val) {
     if (val.size() != m_size)
         MWR_REPORT("%s: invalid initializer", __func__);
 
-    stringstream ss;
-    ss << "setr," << m_parent.name() << ',' << m_name;
-    for (auto& v : val)
-        ss << ',' << static_cast<u32>(v);
+    vector<string> cmd = { "setr", string(m_parent.name()), m_name };
+    cmd.reserve(3 + val.size());
+    for (u8 v : val)
+        cmd.push_back(mwr::to_string<int>(v));
 
-    m_conn.command(ss.str());
+    m_conn.command(cmd);
 }
 
 const char* cpureg::name() const {
