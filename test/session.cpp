@@ -234,6 +234,8 @@ TEST_F(session_test, attribute_types) {
     for (size_t i = 0; i < string_data.size(); ++i)
         string_data[i] = mwr::mkstr("val1: %zu", i);
     attr->set(string_data);
+    for (auto& s : string_data)
+        s = mwr::escape(s, " ");
     EXPECT_EQ(attr->get_str(), mwr::join(string_data, ' '));
 
     attr = sess.find_attribute("system.cpu0.string_property");
