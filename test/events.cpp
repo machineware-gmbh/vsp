@@ -213,7 +213,7 @@ TEST_F(events_test, print) {
 
     sess.step(STEP_NS, TIMEOUT_MS);
     ASSERT_FALSE(lines.empty());
-    EXPECT_THAT(lines[0], HasSubstr("system.cpu0.data fw TLM READ @0x"));
+    EXPECT_THAT(lines[0], HasSubstr("system.cpu0.data >> TLM READ @0x"));
 }
 
 class fake_server
@@ -522,6 +522,9 @@ static bool parse(const string& text, T& tx) {
 }
 
 TEST(events, print) {
+    EXPECT_EQ(format_time(0), "0.000000000s");
+    EXPECT_EQ(format_time(1234567890123), "1.234567890s");
+
     stringstream ss;
     ss << trace_payload(trace_spi{ 1, 2 });
     EXPECT_EQ(ss.str(), "SPI mosi=0x01 miso=0x02");

@@ -36,6 +36,7 @@ private:
     mutable vector<string> m_event_lines;
     mutable size_t m_event_skipped;
     std::ofstream m_event_file;
+    bool m_event_stream;
     vector<pair<string, vsp::module*>> m_subscriptions;
 
     bool handle_list(const string& args);
@@ -50,6 +51,9 @@ private:
     bool handle_kill(const string& args);
     bool handle_exec(const string& args);
     bool handle_events(const string& args);
+    bool handle_trace(const string& args);
+    bool handle_untrace(const string& args);
+    bool trace_select(const string& args, bool enable);
 
     bool events_status();
     bool events_select(const vector<string>& args, bool enable);

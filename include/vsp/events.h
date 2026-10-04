@@ -65,6 +65,9 @@ enum vsp_trace_protocol {
 };
 
 const char* trace_dir_str(vsp_trace_dir dir);
+
+// seconds with nanosecond precision, e.g. "0.001234567s"
+string format_time(u64 time_ps);
 const char* trace_protocol_str(vsp_trace_protocol protocol);
 vsp_trace_protocol trace_protocol_from_str(const char* str);
 

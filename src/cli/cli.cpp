@@ -55,7 +55,10 @@ bool cli::print() {
     cout << prompt();
 
     string in;
-    getline(cin, in);
+    if (!getline(cin, in)) {
+        cout << endl;
+        return false;
+    }
 
     size_t blank_pos = in.find(' ');
     string cmd = in.substr(0, blank_pos);

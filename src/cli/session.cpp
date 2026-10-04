@@ -10,6 +10,9 @@
 
 #include "cli/session.h"
 
+#include <atomic>
+#include <csignal>
+
 #include "vsp/version.h"
 
 namespace cli {
@@ -21,6 +24,7 @@ session::session(shared_ptr<vsp::session> s):
     m_event_lines(),
     m_event_skipped(0),
     m_event_file(),
+    m_event_stream(false),
     m_subscriptions() {
     m_current_mod = m_session->find_module("");
 
@@ -38,7 +42,8 @@ session::session(shared_ptr<vsp::session> s):
                      "disconnect from session", "d");
     register_handler(&session::handle_read, "read",
                      "reads the given <attribute>", "r");
-    register_handler(&session::handle_run, "run", "continues simulation", "c");
+    register_handler(&session::handle_run, "run",
+                     "continues simulation, use CTRL+C to interrupt", "c");
     register_handler(&session::handle_stop, "stop", "stops the simulation");
     register_handler(&session::handle_step, "step",
                      "advances simulation to the next discrete timestamp",
@@ -46,6 +51,11 @@ session::session(shared_ptr<vsp::session> s):
     register_handler(&session::handle_events, "events",
                      "simulation events: add|rm <event> <obj>..., "
                      "log [file]; no arguments shows the status");
+    register_handler(&session::handle_trace, "trace",
+                     "traces all ports of the given modules, or of the "
+                     "current module");
+    register_handler(&session::handle_untrace, "untrace",
+                     "stops tracing the given modules, or the current module");
 
     m_session->on_events_dropped([this](mwr::u64 n) {
         stringstream ss;
@@ -152,13 +162,37 @@ bool session::handle_info(const string& args) {
     return true;
 }
 
+static std::atomic<bool> interrupted(false);
+
+static void handle_sigint(int sig) {
+    interrupted = true;
+}
+
 bool session::handle_run(const string& args) {
     if (m_session->check_running()) {
         cout << "already running" << endl;
         return true;
     }
 
+    interrupted = false;
+    auto prev = std::signal(SIGINT, handle_sigint);
+
     m_session->run();
+    m_event_stream = true;
+    while (!interrupted && m_session->check_running()) {
+        cout << flush_events() << std::flush;
+        mwr::usleep(10000);
+    }
+
+    if (interrupted) {
+        m_session->stop();
+        while (m_session->check_running())
+            ;
+    }
+
+    m_event_stream = false;
+    std::signal(SIGINT, prev);
+    cout << flush_events() << "stopped by " << m_session->reason() << endl;
     return true;
 }
 
@@ -230,6 +264,31 @@ bool session::handle_events(const string& args) {
     return true;
 }
 
+bool session::handle_trace(const string& args) {
+    return trace_select(args, true);
+}
+
+bool session::handle_untrace(const string& args) {
+    return trace_select(args, false);
+}
+
+bool session::trace_select(const string& args, bool enable) {
+    vector<string> split = mwr::split(args, ' ');
+    split.erase(std::remove(split.begin(), split.end(), ""), split.end());
+    if (split.empty())
+        split.push_back("");
+    std::replace(split.begin(), split.end(), string("."), string());
+    split.insert(split.begin(), "trace");
+
+    try {
+        return events_select(split, enable);
+    } catch (std::exception& ex) {
+        cout << (enable ? "trace: " : "untrace: ") << ex.what() << endl;
+    }
+
+    return true;
+}
+
 bool session::events_status() {
     print_report_line("Output", m_event_file.is_open() ? "file" : "console");
     print_report_line("Dropped", m_session->events_dropped());
@@ -275,7 +334,8 @@ bool session::events_select(const vector<string>& args, bool enable) {
             if (enable) {
                 fn = [this](const vsp::led_event& ev) {
                     print_event(mwr::mkstr(
-                        "%16.3f ns %s led %zu=%d", ev.time_ps / 1000.0,
+                        "%s %s led %zu=%d",
+                        vsp::format_time(ev.time_ps).c_str(),
                         ev.leds.hierarchy_name().c_str(), ev.index, ev.state));
                 };
             }
@@ -285,7 +345,7 @@ bool session::events_select(const vector<string>& args, bool enable) {
             if (enable) {
                 fn = [this](const vsp::uart_event& ev) {
                     stringstream ss;
-                    ss << mwr::mkstr("%16.3f ns ", ev.time_ps / 1000.0)
+                    ss << vsp::format_time(ev.time_ps) << " "
                        << ev.terminal.hierarchy_name() << " uart \"";
                     for (char c : ev.data) {
                         if (c == '\n')
@@ -328,6 +388,11 @@ bool session::events_log(const vector<string>& args) {
 void session::print_event(const string& line) {
     if (m_event_file.is_open()) {
         m_event_file << line << '\n';
+        return;
+    }
+
+    if (m_event_stream) {
+        cout << line << '\n';
         return;
     }
 

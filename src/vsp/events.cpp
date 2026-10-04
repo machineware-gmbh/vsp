@@ -23,6 +23,12 @@ const char* trace_dir_str(vsp_trace_dir dir) {
     return dir == VSP_TRACE_BW ? "bw" : "fw";
 }
 
+string format_time(u64 time_ps) {
+    u64 ns = time_ps / 1000;
+    return mkstr("%llu.%09llus", (unsigned long long)(ns / 1000000000ull),
+                 (unsigned long long)(ns % 1000000000ull));
+}
+
 const char* trace_protocol_str(vsp_trace_protocol protocol) {
     if (protocol < 0 || protocol >= VSP_TRACE_PROTOCOL_COUNT)
         return PROTOCOL_NAMES[VSP_TRACE_PROTOCOL_UNKNOWN];
@@ -373,8 +379,8 @@ static void print_bytes(ostream& os, const vector<u8>& data) {
 }
 
 ostream& operator<<(ostream& os, const trace_info& info) {
-    os << mkstr("%16.3f ns ", info.time_ps / 1000.0)
-       << info.port.hierarchy_name() << " " << trace_dir_str(info.dir);
+    os << format_time(info.time_ps) << " " << info.port.hierarchy_name()
+       << (info.is_request() ? " >>" : " <<");
     if (info.error)
         os << " ERROR";
     return os;
