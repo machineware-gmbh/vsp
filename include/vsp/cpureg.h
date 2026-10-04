@@ -12,11 +12,8 @@
 #define VSP_CPUREG_H
 
 #include "vsp/common.h"
-#include "vsp/connection.h"
 
 namespace vsp {
-
-class target;
 
 class cpureg
 {

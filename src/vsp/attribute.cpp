@@ -9,6 +9,7 @@
  ******************************************************************************/
 
 #include "vsp/attribute.h"
+#include "vsp/connection.h"
 
 namespace vsp {
 
@@ -51,6 +52,13 @@ string attribute::get_str() {
     } catch (...) {
         return "<error>";
     }
+}
+
+void attribute::set(const vector<string>& val) {
+    MWR_ERROR_ON(val.size() != m_count, "size mismatch");
+    vector<string> cmd = { "seta", hierarchy_name() };
+    cmd.insert(cmd.end(), val.begin(), val.end());
+    m_conn.command(cmd);
 }
 
 } // namespace vsp

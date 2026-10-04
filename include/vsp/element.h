@@ -12,7 +12,6 @@
 #define VSP_ELEMENT_H
 
 #include "vsp/common.h"
-#include "vsp/connection.h"
 
 namespace vsp {
 

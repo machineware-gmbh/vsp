@@ -19,14 +19,8 @@ class session_test : public Test
 {
 protected:
     static constexpr const char* HOST = "localhost";
-    static constexpr u16 PORT = 54321;
 
-    session_test(): sess(), subp() {
-        string exec = SIMPLE_VP_PATH;
-        vector<string> args{ "-c", mkstr("system.session=%hu", PORT) };
-        MWR_ERROR_ON(!subp.run(exec, args), "failed to launch simple_vp");
-        try_connect(sess, HOST, PORT, 100);
-    }
+    session_test(): sess(), subp(), port(connect_simple_vp(sess, subp)) {}
 
     virtual ~session_test() {
         sess.quit();
@@ -35,6 +29,7 @@ protected:
 
     vsp::session sess;
     mwr::subprocess subp;
+    u16 port;
 };
 
 TEST_F(session_test, auto_discovery) {
@@ -45,20 +40,23 @@ TEST_F(session_test, auto_discovery) {
                       [pid = (u32)subp.pid()](const session_info& info) {
                           return info.pid == pid;
                       });
-    EXPECT_NE(it, sessions.end());
+    ASSERT_NE(it, sessions.end());
+    EXPECT_EQ(it->port, port);
+    EXPECT_EQ(it->user, mwr::username());
+    EXPECT_THAT(it->program, HasSubstr("simplevp"));
 }
 
 TEST_F(session_test, host_and_peer_data) {
     EXPECT_TRUE(sess.is_connected());
     EXPECT_STREQ(sess.host(), HOST);
-    EXPECT_EQ(sess.port(), PORT);
+    EXPECT_EQ(sess.port(), port);
     ASSERT_NE(sess.peer(), nullptr);
     EXPECT_GT(strlen(sess.peer()), 0);
 }
 
 TEST_F(session_test, connect_and_quit) {
     // double connect
-    sess.connect(HOST, PORT);
+    sess.connect(HOST, port);
     EXPECT_TRUE(sess.is_connected());
 
     sess.quit();
@@ -73,13 +71,13 @@ TEST_F(session_test, reconnect) {
     sess.disconnect();
     EXPECT_FALSE(sess.is_connected());
 
-    sess.connect(HOST, PORT);
+    sess.connect(HOST, port);
     EXPECT_TRUE(sess.is_connected());
 
     sess.quit();
     EXPECT_FALSE(sess.is_connected());
 
-    EXPECT_THROW(sess.connect(HOST, PORT), mwr::report);
+    EXPECT_THROW(sess.connect(HOST, port), mwr::report);
     EXPECT_FALSE(sess.is_connected());
 }
 
@@ -332,4 +330,37 @@ TEST_F(session_test, commands) {
 
     cmd = sess.find_command("system.cpu0.dump");
     EXPECT_EQ(cmd, nullptr);
+}
+
+TEST(local_sessions, orphans) {
+    // pid of a simulation that is gone, terminate waits for it to exit
+    mwr::subprocess subp;
+    u16 port = launch_simple_vp(subp);
+    u32 pid = (u32)subp.pid();
+    subp.terminate();
+
+    string name = mkstr("vcml_session_%u", pid);
+    string path = (fs::path(mwr::temp_dir()) / name).string();
+    auto announce = [&](const string& user) {
+        std::ofstream of(path);
+        of << "localhost\n" << port << "\n" << user << "\nsimple_vp\n";
+    };
+
+    auto listed = [&]() {
+        for (const auto& info : session::local_sessions()) {
+            if (info.pid == pid)
+                return true;
+        }
+        return false;
+    };
+
+    // files of other users are not listed, but also not removed
+    announce("someone-else");
+    EXPECT_FALSE(listed());
+    EXPECT_TRUE(mwr::file_exists(path));
+
+    // orphaned files of this user are removed
+    announce(mwr::username());
+    EXPECT_FALSE(listed());
+    EXPECT_FALSE(mwr::file_exists(path));
 }

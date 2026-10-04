@@ -20,6 +20,7 @@ find_package(Git REQUIRED)
 find_github_repo(mwr "machineware-gmbh/mwr")
 
 add_subdirectory(src/pugixml)
+add_subdirectory(src/nlohmann_json)
 
 option(VSP_TESTS "Build unit tests" OFF)
 option(VSP_COVERAGE "Generate coverage data" OFF)
@@ -41,7 +42,9 @@ add_library(vsp STATIC
     ${src}/vsp/element.cpp
     ${src}/vsp/module.cpp
     ${src}/vsp/session.cpp
-    ${src}/vsp/target.cpp)
+    ${src}/vsp/target.cpp
+    ${src}/vsp/dispatcher.cpp
+    ${src}/vsp/events.cpp)
 
 target_compile_options(vsp PRIVATE ${MWR_COMPILER_WARN_FLAGS})
 target_compile_features(vsp PUBLIC cxx_std_17)
@@ -51,6 +54,7 @@ target_include_directories(vsp PRIVATE ${src})
 target_include_directories(vsp PRIVATE ${gen})
 
 target_link_libraries(vsp PUBLIC mwr)
+target_link_libraries(vsp PRIVATE vsp_nlohmann_json)
 target_link_libraries(vsp PRIVATE pugixml)
 
 set_target_properties(vsp PROPERTIES DEBUG_POSTFIX "d")

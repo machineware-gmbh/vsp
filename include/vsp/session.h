@@ -14,9 +14,9 @@
 #include "vsp/common.h"
 #include "vsp/attribute.h"
 #include "vsp/command.h"
-#include "vsp/connection.h"
 #include "vsp/module.h"
 #include "vsp/target.h"
+#include "vsp/events.h"
 
 namespace vsp {
 
@@ -75,12 +75,15 @@ struct session_info {
     string host;
     u16 port;
     u32 pid;
+    string user;
+    string program;
 };
 
 class session
 {
 private:
-    connection m_conn;
+    unique_ptr<connection> m_conn;
+    unique_ptr<dispatcher> m_dispatcher;
     string m_sysc_version;
     string m_vcml_version;
     int m_protover;
@@ -89,6 +92,7 @@ private:
     u64 m_time_ns;
     u64 m_cycle;
     module* m_mods;
+    unordered_map<string, module*> m_modmap;
     vector<target*> m_targets;
     unordered_map<string, target_group> m_target_groups;
 
@@ -103,7 +107,7 @@ public:
     session();
     session(const session_info& info);
     session(const string& host, u16 port);
-    session(session&& other) noexcept;
+    session(session&& other) = delete;
     virtual ~session();
 
     session(const session&) = delete;
@@ -119,9 +123,9 @@ public:
     u64 get_quantum_ns();
     void set_quantum(u64 ns);
 
-    const char* peer() const { return m_conn.peer(); }
-    const char* host() const { return m_conn.host(); }
-    u16 port() const { return m_conn.port(); }
+    const char* peer() const;
+    const char* host() const;
+    u16 port() const;
 
     bool is_connected() const;
     void connect(const session_info& info);
@@ -141,6 +145,11 @@ public:
     const stop_reason& reason() const { return m_reason; }
 
     void quit();
+
+    // called when the simulator dropped events because they were not
+    // fetched in time; poll check_running regularly while running
+    void on_events_dropped(function<void(u64)> fn);
+    u64 events_dropped() const;
 
     void dump(ostream& os = std::cout);
 

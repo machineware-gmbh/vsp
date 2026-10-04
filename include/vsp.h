@@ -13,11 +13,11 @@
 
 #include "vsp/attribute.h"
 #include "vsp/command.h"
-#include "vsp/connection.h"
 #include "vsp/cpureg.h"
 #include "vsp/element.h"
 #include "vsp/module.h"
 #include "vsp/session.h"
 #include "vsp/target.h"
+#include "vsp/events.h"
 
 #endif

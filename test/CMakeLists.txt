@@ -44,5 +44,9 @@ macro(new_test test timeout)
 endmacro()
 
 new_test(connection 10)
+target_include_directories(connection PRIVATE ${CMAKE_SOURCE_DIR}/src)
 new_test(session 300)
 new_test(target 300)
+new_test(events 300)
+target_include_directories(events PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(events vsp_nlohmann_json) # payloads.h

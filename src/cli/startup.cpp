@@ -18,8 +18,11 @@ using mwr::termcolors;
 
 startup::startup(): m_session(nullptr) {
     auto local_sessions = vsp::session::local_sessions();
-    for (auto& info : local_sessions)
+    for (auto& info : local_sessions) {
         m_sessions.push_back(std::make_shared<vsp::session>(info));
+        m_programs.push_back(mwr::mkstr(
+            "%s, pid %u", mwr::filename(info.program).c_str(), info.pid));
+    }
 
     register_handler(&startup::handle_exit, "exit", "exit the program", "e");
     register_handler(&startup::handle_list, "list", "list available sessions",
@@ -47,7 +50,10 @@ bool startup::handle_list(const string& args) {
              << (s->is_connected()
                      ? string(termcolors::YELLOW) + string(termcolors::BOLD)
                      : string())
-             << s->host() << ":" << s->port() << termcolors::CLEAR << endl;
+             << s->host() << ":" << s->port() << termcolors::CLEAR;
+        if (!m_programs[id - 1].empty())
+            cout << " (" << m_programs[id - 1] << ")";
+        cout << endl;
     }
     return true;
 }
@@ -96,6 +102,7 @@ bool startup::handle_connect(const string& args) {
     }
     auto s = make_shared<vsp::session>(host, port);
     m_sessions.push_back(s);
+    m_programs.push_back("");
     m_session = std::move(s);
     session();
 

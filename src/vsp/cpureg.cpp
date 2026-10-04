@@ -9,6 +9,7 @@
  ******************************************************************************/
 
 #include "vsp/cpureg.h"
+#include "vsp/connection.h"
 #include "vsp/target.h"
 
 namespace vsp {

@@ -12,7 +12,6 @@
 #define VSP_TARGET_H
 
 #include "vsp/common.h"
-#include "vsp/connection.h"
 #include "vsp/cpureg.h"
 
 namespace vsp {

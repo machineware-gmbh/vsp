@@ -16,7 +16,6 @@
 
 namespace vsp {
 
-class module;
 class attribute : public element
 {
 private:
@@ -76,13 +75,6 @@ inline void attribute::set(const vector<T>& val) {
     for (const auto& v : val)
         vec.push_back(to_string(v));
     set(vec);
-}
-
-inline void attribute::set(const vector<string>& val) {
-    MWR_ERROR_ON(val.size() != m_count, "size mismatch");
-    vector<string> cmd = { "seta", hierarchy_name() };
-    cmd.insert(cmd.end(), val.begin(), val.end());
-    m_conn.command(cmd);
 }
 
 } // namespace vsp

@@ -11,6 +11,7 @@
 #include "vsp/session.h"
 
 #include "vsp/connection.h"
+#include "vsp/dispatcher.h"
 #include "vsp/module.h"
 
 #include <pugixml.hpp>
@@ -79,7 +80,8 @@ session::session(const session_info& info): session(info.host, info.port) {
 }
 
 session::session():
-    m_conn(),
+    m_conn(new connection()),
+    m_dispatcher(new dispatcher(*m_conn)),
     m_sysc_version(),
     m_vcml_version(),
     m_protover(VSP_UNKNOWN),
@@ -88,6 +90,7 @@ session::session():
     m_time_ns(),
     m_cycle(),
     m_mods(),
+    m_modmap(),
     m_targets(),
     m_target_groups() {
 }
@@ -106,7 +109,7 @@ session::~session() {
 }
 
 void session::update_version() {
-    auto resp = m_conn.command({ "version" });
+    auto resp = m_conn->command({ "version" });
     MWR_REPORT_ON(resp.size() < 3, "malformed version response");
 
     m_sysc_version = resp[1];
@@ -117,7 +120,8 @@ void session::update_version() {
 }
 
 void session::update_status() {
-    auto resp = m_conn.command({ "status" });
+    // OK,<runstate>,<time-ns>,<delta>[,<events-json>]
+    auto resp = m_conn->command({ "status" });
 
     if (!is_connected()) {
         m_running = false;
@@ -135,6 +139,9 @@ void session::update_status() {
 
     m_time_ns = stoull(resp[2]);
     m_cycle = stoull(resp[3]);
+
+    if (resp.size() > 4)
+        m_dispatcher->dispatch(resp[4]);
 }
 
 void session::update_reason(const string& reason) {
@@ -239,14 +246,20 @@ void session::wait_timeout(u64 timeout_ms) {
     }
 }
 
-static module* xml_parse_modules(connection& conn, const pugi::xml_node& node,
-                                 module* parent) {
-    module* mod = new module(node.attribute("name").value(), conn, parent,
-                             node.attribute("kind").value(),
-                             node.attribute("version").value());
+static module* xml_parse_modules(connection& conn, dispatcher& disp,
+                                 const pugi::xml_node& node, module* parent) {
+    // events published by the object itself, e.g. events="trace,led"
+    vector<string> events;
+    string evlist = node.attribute("events").value();
+    if (!evlist.empty())
+        events = split(evlist, ',');
+
+    module* mod = new module(node.attribute("name").value(), conn, disp,
+                             parent, node.attribute("kind").value(),
+                             node.attribute("version").value(), events);
 
     for (auto& child : node.children("object")) {
-        mod->add_module(xml_parse_modules(conn, child, mod));
+        mod->add_module(xml_parse_modules(conn, disp, child, mod));
     }
 
     for (auto& target : node.children("attribute")) {
@@ -264,8 +277,15 @@ static module* xml_parse_modules(connection& conn, const pugi::xml_node& node,
     return mod;
 }
 
+static void map_modules(unordered_map<string, module*>& map, module* mod) {
+    for (module* child : mod->children()) {
+        map[child->hierarchy_name()] = child;
+        map_modules(map, child);
+    }
+}
+
 void session::update_modules() {
-    auto resp = m_conn.command({ "list", "xml" });
+    auto resp = m_conn->command({ "list", "xml" });
     MWR_REPORT_ON(resp.size() < 2, "malformed 'list' response");
 
     pugi::xml_document list;
@@ -276,7 +296,10 @@ void session::update_modules() {
 
     if (m_mods != nullptr)
         delete m_mods;
-    m_mods = xml_parse_modules(m_conn, hierachy, nullptr);
+    m_mods = xml_parse_modules(*m_conn, *m_dispatcher, hierachy, nullptr);
+
+    m_modmap.clear();
+    map_modules(m_modmap, m_mods);
 
     for (auto& t : hierachy.children("target")) {
         string name = t.text().as_string();
@@ -286,7 +309,7 @@ void session::update_modules() {
             gname = name;
         auto& group = m_target_groups[gname];
         group.name = gname;
-        m_targets.push_back(new target(m_conn, name, arch, group));
+        m_targets.push_back(new target(*m_conn, name, arch, group));
     }
 }
 
@@ -313,13 +336,13 @@ u64 session::get_cycle_count() {
 }
 
 u64 session::get_quantum_ns() {
-    auto resp = m_conn.command({ "getq" });
+    auto resp = m_conn->command({ "getq" });
     MWR_REPORT_ON(resp.size() < 2, "malfomed get-quantum response");
     return stoull(resp[1]);
 }
 
 void session::set_quantum(u64 ns) {
-    m_conn.command({ "setq", to_string(ns) });
+    m_conn->command({ "setq", to_string(ns) });
 }
 
 void session::connect(const session_info& info) {
@@ -327,11 +350,15 @@ void session::connect(const session_info& info) {
 }
 
 void session::connect(const string& host, u16 port) {
-    if (m_conn.is_connected())
+    if (m_conn->is_connected())
         disconnect();
 
+    // also needed if the connection broke without disconnect: keeps the
+    // event handlers by name before the modules are rebuilt
+    m_dispatcher->detach();
+
     try {
-        m_conn.connect(host, port);
+        m_conn->connect(host, port);
         if (!is_connected())
             return;
 
@@ -343,26 +370,42 @@ void session::connect(const string& host, u16 port) {
             mwr::cpu_yield();
 
         update_modules();
+        m_dispatcher->attach(m_mods, &m_modmap);
     } catch (std::exception& ex) {
         MWR_REPORT("error connecting: %s", ex.what());
     }
 }
 
 void session::disconnect() noexcept {
-    m_conn.disconnect();
+    // keep the event handlers by name before the modules are deleted
+    m_dispatcher->detach();
+    m_conn->disconnect();
 
+    m_modmap.clear();
     if (m_mods != nullptr)
         delete m_mods;
     m_mods = nullptr;
 }
 
+const char* session::peer() const {
+    return m_conn->peer();
+}
+
+const char* session::host() const {
+    return m_conn->host();
+}
+
+u16 session::port() const {
+    return m_conn->port();
+}
+
 bool session::is_connected() const {
-    return m_conn.is_connected();
+    return m_conn->is_connected();
 }
 
 void session::quit() {
     try {
-        m_conn.command({ "quit" });
+        m_conn->command({ "quit" });
     } catch (mwr::report&) {
         // expect disconnect
     }
@@ -378,7 +421,7 @@ void session::step(u64 duration_ns, u64 timeout_ms) {
     update_status();
     if (!m_running) {
         m_running = true;
-        m_conn.command({ "resume", to_string(duration_ns) + "ns" });
+        m_conn->command({ "resume", to_string(duration_ns) + "ns" });
     }
 
     if (timeout_ms > 0)
@@ -396,7 +439,7 @@ void session::stepi(const vector<const target*>& targets, u64 timeout_ms) {
     cmd.reserve(1 + targets.size());
     for (const auto* tgt : targets)
         cmd.push_back(tgt->name());
-    m_conn.command(cmd);
+    m_conn->command(cmd);
 
     if (timeout_ms > 0)
         wait_timeout(timeout_ms);
@@ -406,7 +449,7 @@ void session::run() {
     update_status();
     if (!m_running) {
         m_running = true;
-        m_conn.command({ "resume" });
+        m_conn->command({ "resume" });
     }
 }
 
@@ -417,17 +460,21 @@ bool session::check_running() {
 
 void session::stop() {
     update_status();
-    if (m_running)
-        m_conn.command({ "stop" });
+    if (!m_running)
+        return;
+
+    m_conn->command({ "stop" });
+    while (check_running())
+        mwr::usleep(100);
 }
 
 void session::set_stop_mode(vsp_stop_mode mode) {
     switch (mode) {
     case VSP_STOP_MODE_SOFT:
-        m_conn.command({ "setsm", "soft" });
+        m_conn->command({ "setsm", "soft" });
         break;
     case VSP_STOP_MODE_HARD:
-        m_conn.command({ "setsm", "hard" });
+        m_conn->command({ "setsm", "hard" });
         break;
     default:
         MWR_ERROR("invalid stop mode: %d", mode);
@@ -478,27 +525,57 @@ const vector<module*>& session::modules() const {
     return m_mods->children();
 }
 
+void session::on_events_dropped(function<void(u64)> fn) {
+    m_dispatcher->on_dropped(std::move(fn));
+}
+
+u64 session::events_dropped() const {
+    return m_dispatcher->dropped();
+}
+
 vector<session_info> session::local_sessions() {
     vector<session_info> sessions;
+    vector<fs::path> orphans;
     std::string_view prefix("vcml_session_");
+    string user = mwr::username();
 
     for (const auto& f : fs::directory_iterator(mwr::temp_dir())) {
         string filename = f.path().filename().string();
         if (filename.find(prefix) != 0)
             continue;
 
-        u32 pid = stoi(filename.substr(prefix.size()));
+        // announce file: host, port, user and program of the simulation
+        string host, port, owner, program;
+        {
+            ifstream file(f.path());
+            if (!file.is_open() || !getline(file, host) ||
+                !getline(file, port))
+                continue;
+            getline(file, owner);
+            getline(file, program);
+        }
 
-        ifstream file(f.path());
-        if (!file.is_open())
-            continue;
+        try {
+            u32 pid = stoul(filename.substr(prefix.size()));
 
-        string host, data;
-        if (!getline(file, host) || !getline(file, data))
-            continue;
+            // simulations that ended without removing their file, e.g.
+            // because they were killed; only remove files of this user
+            if (!mwr::process_exists((int)pid)) {
+                if (owner == user)
+                    orphans.push_back(f.path());
+                continue;
+            }
 
-        u16 port = stoi(data);
-        sessions.push_back({ host, port, pid });
+            sessions.push_back(
+                { host, (u16)stoul(port), pid, owner, program });
+        } catch (std::exception&) {
+            // not a valid announce file
+        }
+    }
+
+    for (const auto& orphan : orphans) {
+        std::error_code ec;
+        fs::remove(orphan, ec);
     }
 
     return sessions;

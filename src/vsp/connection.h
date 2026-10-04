@@ -26,6 +26,12 @@ private:
     mutex m_mtx;
     socket m_socket;
 
+    // received data not consumed yet
+    vector<char> m_rxbuf;
+    size_t m_rxpos;
+
+    void fill();
+    char recv_char();
     string recv();
     void send(const string& data);
 
@@ -47,6 +53,10 @@ public:
     void connect(const string& host, u16 port);
     void disconnect() noexcept;
 
+    // sends cmd and returns the response without checking for errors
+    vector<string> request(const vector<string>& cmd);
+
+    // sends cmd and reports an error unless the response starts with OK
     vector<string> command(const vector<string>& cmd);
 };
 

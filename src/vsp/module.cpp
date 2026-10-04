@@ -12,13 +12,14 @@
 
 #include "vsp/attribute.h"
 #include "vsp/command.h"
+#include "vsp/dispatcher.h"
 
 namespace vsp {
 
-module::module(const string& name, connection& conn, module* parent,
-               const string& kind,
-               const string& version) :element(name, conn, parent),
-    m_kind(kind), m_version(version) {
+module::module(const string& name, connection& conn, dispatcher& disp,
+               module* parent, const string& kind, const string& version,
+               const vector<string>& events) :element(name, conn, parent),
+    m_dispatcher(disp), m_kind(kind), m_version(version), m_events(events) {
 }
 
 module::~module() {
@@ -36,6 +37,38 @@ const char* module::kind() const {
 
 const char* module::version() const {
     return m_version.c_str();
+}
+
+bool module::publishes(const string& event) const {
+    if (mwr::stl_contains(m_events, event))
+        return true;
+
+    for (const module* child : m_mods) {
+        if (child->publishes(event))
+            return true;
+    }
+
+    return false;
+}
+
+bool module::is_traced() const {
+    return m_dispatcher.is_subscribed(*this, "trace");
+}
+
+void module::on_led(led_handler fn) {
+    m_dispatcher.on_led(*this, std::move(fn));
+}
+
+void module::on_uart(uart_handler fn) {
+    m_dispatcher.on_uart(*this, std::move(fn));
+}
+
+void module::on_trace(trace_handler fn) {
+    m_dispatcher.on_trace(*this, std::move(fn));
+}
+
+void module::on_trace(vsp_trace_protocol protocol, trace_handler fn) {
+    m_dispatcher.on_trace(*this, protocol, std::move(fn));
 }
 
 module* module::find_module(const string& mod) {

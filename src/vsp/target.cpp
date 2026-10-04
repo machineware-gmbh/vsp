@@ -9,6 +9,7 @@
  ******************************************************************************/
 
 #include "vsp/target.h"
+#include "vsp/connection.h"
 
 namespace vsp {
 

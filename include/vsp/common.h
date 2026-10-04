@@ -75,6 +75,14 @@ using std::make_unique;
 using std::function;
 using std::pair;
 
+// forward
+class connection;
+class dispatcher;
+class attribute;
+class command;
+class module;
+class target;
+
 } // namespace vsp
 
 #endif

@@ -15,7 +15,13 @@
 namespace cli {
 
 session::session(shared_ptr<vsp::session> s):
-    m_session(std::move(s)), m_current_mod(nullptr) {
+    m_session(std::move(s)),
+    m_current_mod(nullptr),
+    m_last_cmd(),
+    m_event_lines(),
+    m_event_skipped(0),
+    m_event_file(),
+    m_subscriptions() {
     m_current_mod = m_session->find_module("");
 
     register_handler(&session::handle_cd, "cd",
@@ -37,6 +43,15 @@ session::session(shared_ptr<vsp::session> s):
     register_handler(&session::handle_step, "step",
                      "advances simulation to the next discrete timestamp",
                      "s");
+    register_handler(&session::handle_events, "events",
+                     "simulation events: add|rm <event> <obj>..., "
+                     "log [file]; no arguments shows the status");
+
+    m_session->on_events_dropped([this](mwr::u64 n) {
+        stringstream ss;
+        ss << "--- " << n << " events dropped ---";
+        m_event_lines.push_back(ss.str());
+    });
 }
 
 bool session::handle_list(const string& args) {
@@ -53,7 +68,12 @@ bool session::handle_list(const string& args) {
     if (show_mods) {
         for (auto& m : m_current_mod->children()) {
             cout << termcolors::BOLD << termcolors::CYAN << m->name()
-                 << termcolors::CLEAR << endl;
+                 << termcolors::CLEAR;
+            for (const auto& [event, mod] : m_subscriptions) {
+                if (mod == m)
+                    cout << " [" << event << "]";
+            }
+            cout << endl;
         }
     }
 
@@ -184,11 +204,161 @@ bool session::handle_exec(const string& args) {
     return true;
 }
 
-string session::prompt() const {
+bool session::handle_events(const string& args) {
+    vector<string> split = mwr::split(args, ' ');
+    split.erase(std::remove(split.begin(), split.end(), ""), split.end());
+
+    try {
+        if (split.empty())
+            return events_status();
+
+        const string& sub = split[0];
+        vector<string> rest(split.begin() + 1, split.end());
+
+        if (sub == "add")
+            return events_select(rest, true);
+        if (sub == "rm")
+            return events_select(rest, false);
+        if (sub == "log")
+            return events_log(rest);
+
+        cout << "unknown events command '" << sub << "'" << endl;
+    } catch (std::exception& ex) {
+        cout << "events: " << ex.what() << endl;
+    }
+
+    return true;
+}
+
+bool session::events_status() {
+    print_report_line("Output", m_event_file.is_open() ? "file" : "console");
+    print_report_line("Dropped", m_session->events_dropped());
+    for (const auto& [event, mod] : m_subscriptions)
+        print_report_line(event, mod->hierarchy_name());
+    return true;
+}
+
+bool session::events_select(const vector<string>& args, bool enable) {
+    if (args.size() < 2) {
+        cout << "usage: events " << (enable ? "add" : "rm")
+             << " trace|led|uart <obj>..." << endl;
+        return true;
+    }
+
+    const string& event = args[0];
+    if (event != "trace" && event != "led" && event != "uart") {
+        cout << "unknown event '" << event << "', use trace, led or uart"
+             << endl;
+        return true;
+    }
+
+    for (size_t i = 1; i < args.size(); i++) {
+        vsp::module* mod = m_current_mod->find_module(args[i]);
+        if (!mod) {
+            cout << "module '" << args[i] << "' does not exist!" << endl;
+            return true;
+        }
+
+        if (event == "trace") {
+            vsp::trace_handler fn = nullptr;
+            if (enable) {
+                fn = [this](const vsp::trace_info& info,
+                            const vsp::trace_payload& tx) {
+                    stringstream ss;
+                    ss << info << " " << tx;
+                    print_event(ss.str());
+                };
+            }
+            mod->on_trace(fn);
+        } else if (event == "led") {
+            vsp::led_handler fn = nullptr;
+            if (enable) {
+                fn = [this](const vsp::led_event& ev) {
+                    print_event(mwr::mkstr(
+                        "%16.3f ns %s led %zu=%d", ev.time_ps / 1000.0,
+                        ev.leds.hierarchy_name().c_str(), ev.index, ev.state));
+                };
+            }
+            mod->on_led(fn);
+        } else {
+            vsp::uart_handler fn = nullptr;
+            if (enable) {
+                fn = [this](const vsp::uart_event& ev) {
+                    stringstream ss;
+                    ss << mwr::mkstr("%16.3f ns ", ev.time_ps / 1000.0)
+                       << ev.terminal.hierarchy_name() << " uart \"";
+                    for (char c : ev.data) {
+                        if (c == '\n')
+                            ss << "\\n";
+                        else if (c >= 0x20 && c < 0x7f)
+                            ss << c;
+                        else
+                            ss << mwr::mkstr("\\x%02x", (mwr::u8)c);
+                    }
+                    ss << "\"";
+                    print_event(ss.str());
+                };
+            }
+            mod->on_uart(fn);
+        }
+
+        auto entry = std::make_pair(event, mod);
+        if (enable)
+            mwr::stl_add_unique(m_subscriptions, entry);
+        else
+            mwr::stl_remove(m_subscriptions, entry);
+    }
+
+    return true;
+}
+
+bool session::events_log(const vector<string>& args) {
+    if (m_event_file.is_open())
+        m_event_file.close();
+
+    if (!args.empty()) {
+        m_event_file.open(args[0]);
+        if (!m_event_file)
+            cout << "cannot open '" << args[0] << "'" << endl;
+    }
+
+    return true;
+}
+
+void session::print_event(const string& line) {
+    if (m_event_file.is_open()) {
+        m_event_file << line << '\n';
+        return;
+    }
+
+    if (m_event_lines.size() >= MAX_EVENT_LINES) {
+        m_event_skipped++;
+        return;
+    }
+
+    m_event_lines.push_back(line);
+}
+
+string session::flush_events() const {
     stringstream ss;
+    for (const string& line : m_event_lines)
+        ss << line << endl;
+    if (m_event_skipped > 0)
+        ss << "... " << m_event_skipped << " more events not shown" << endl;
+
+    m_event_lines.clear();
+    m_event_skipped = 0;
+    return ss.str();
+}
+
+string session::prompt() const {
+    // fetching the time also delivers pending events
+    double time = m_session->get_time_ns() / 1e9;
+
+    stringstream ss;
+    ss << flush_events();
     ss << termcolors::BOLD << termcolors::WHITE << "[" << std::fixed
-       << std::setprecision(9) << m_session->get_time_ns() / 1e9 << "s] "
-       << termcolors::CLEAR;
+       << std::setprecision(9) << time << "s] " << termcolors::CLEAR;
     ss << termcolors::YELLOW << m_session->peer() << termcolors::CLEAR;
     ss << " " << termcolors::BOLD << termcolors::CYAN
        << m_current_mod->hierarchy_name() << termcolors::CLEAR;

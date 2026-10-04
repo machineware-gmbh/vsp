@@ -1,6 +1,6 @@
  ##############################################################################
  #                                                                            #
- # Copyright (C) 2025 MachineWare GmbH                                        #
+ # Copyright (C) 2026 MachineWare GmbH                                        #
  # All Rights Reserved                                                        #
  #                                                                            #
  # This is work is licensed under the terms described in the LICENSE file     #
@@ -8,11 +8,14 @@
  #                                                                            #
  ##############################################################################
 
-add_library(pugixml INTERFACE)
+# only used privately by libvsp, its headers are not installed; the target
+# name avoids clashes with a nlohmann_json target of a parent project
+add_library(vsp_nlohmann_json INTERFACE)
 
 if (CMAKE_VERSION GREATER_EQUAL "3.19")
-    set_target_properties(pugixml PROPERTIES VERSION "1.15")
+    set_target_properties(vsp_nlohmann_json PROPERTIES VERSION "3.12.0")
 endif()
 
-target_include_directories(pugixml SYSTEM INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
-install(FILES LICENSE.md DESTINATION . RENAME LICENSE.pugixml)
+target_include_directories(vsp_nlohmann_json SYSTEM INTERFACE
+                           ${CMAKE_CURRENT_SOURCE_DIR}/include)
+install(FILES LICENSE.MIT DESTINATION . RENAME LICENSE.nlohmann-json)

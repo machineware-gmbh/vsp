@@ -53,6 +53,58 @@ After installation, you should find the header files, library, and the CLI appli
 
 ----
 
+## Simulation Events
+
+Modules can report what happens in the simulation: transactions on their
+sockets and registers (traces), LED changes and UART output. Installing a
+handler on a module subscribes to these events for that module and everything
+below it; passing `nullptr` removes the handler and unsubscribes. Handlers can
+only be changed while the simulation is stopped.
+
+Events arrive with the status updates of the session and handlers run on the
+calling thread: when `step` or `stop` return, all events up to that point
+have been delivered. After `run`, call `check_running` regularly, otherwise
+the simulator drops the oldest events (see `session::on_events_dropped`).
+
+```cpp
+#include <vsp.h>
+
+vsp::session sess("localhost", 4444);
+vsp::module* cpu = sess.find_module("system.cpu0");
+
+// traces of one protocol, as a typed struct
+cpu->on_trace<vsp::trace_tlm>(
+    [](const vsp::trace_info& info, const vsp::trace_tlm& tx) {
+        printf("%s %s @0x%llx\n", info.port.name(), tx.command.c_str(),
+               (unsigned long long)tx.address);
+    });
+
+// traces of all protocols, the payload holds one of the trace_* structs
+sess.find_module("system")->on_trace(
+    [](const vsp::trace_info& info, const vsp::trace_payload& tx) {
+        std::cout << info << " " << tx << std::endl;
+    });
+
+// led changes and uart output of everything below the board
+vsp::module* board = sess.find_module("system.board");
+board->on_led([](const vsp::led_event& ev) {
+    printf("%s led %zu: %d\n", ev.leds.name(), ev.index, ev.state);
+});
+board->on_uart([](const vsp::uart_event& ev) { std::cout << ev.data; });
+
+sess.step(1000, 10000); // 1us, wait up to 10s; handlers have been called
+
+cpu->on_trace<vsp::trace_tlm>(nullptr); // unsubscribe
+```
+
+`module::is_traceable()`, `has_leds()` and `has_uart()` tell whether a module
+or one of its children can report these events.
+
+In the CLI, use `events add trace|led|uart <obj>...`, `events rm ...` and
+`events log [file]`; `events` shows the status.
+
+----
+
 ## License
 
 This project is proprietary and confidential work and requires a separate

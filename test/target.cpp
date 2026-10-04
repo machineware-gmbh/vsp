@@ -19,14 +19,8 @@ class target_test : public Test
 {
 protected:
     static constexpr const char* HOST = "localhost";
-    static constexpr u16 PORT = 54321;
 
-    target_test(): sess(), subp() {
-        string exec = SIMPLE_VP_PATH;
-        vector<string> args{ "-c", mkstr("system.session=%hu", PORT) };
-        MWR_ERROR_ON(!subp.run(exec, args), "failed to launch simple_vp");
-        try_connect(sess, HOST, PORT, 100);
-    }
+    target_test(): sess(), subp(), port(connect_simple_vp(sess, subp)) {}
 
     virtual ~target_test() {
         sess.quit();
@@ -55,6 +49,7 @@ protected:
 
     vsp::session sess;
     mwr::subprocess subp;
+    u16 port;
 };
 
 TEST_F(target_test, targets) {
@@ -699,7 +694,7 @@ TEST_F(target_test, stop_immediately) {
 }
 
 TEST_F(target_test, multi_session) {
-    session sess2(HOST, PORT);
+    session sess2(HOST, port);
 
     target* targ = sess.find_target("system.cpu0");
     ASSERT_NE(targ, nullptr);

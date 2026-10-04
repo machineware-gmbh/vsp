@@ -22,6 +22,7 @@ class startup : public cli
 private:
     shared_ptr<vsp::session> m_session;
     vector<shared_ptr<vsp::session>> m_sessions;
+    vector<string> m_programs;
 
     bool handle_exit(const string& args);
     bool handle_list(const string& args);

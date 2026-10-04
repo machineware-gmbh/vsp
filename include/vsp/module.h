@@ -13,24 +13,29 @@
 
 #include "vsp/common.h"
 #include "vsp/element.h"
+#include "vsp/events.h"
 
 namespace vsp {
-
-class attribute;
-class command;
 
 class module : public element
 {
 private:
+    dispatcher& m_dispatcher;
     string m_kind;
     string m_version;
+    vector<string> m_events;
     vector<module*> m_mods;
     vector<attribute*> m_attrs;
     vector<command*> m_cmds;
 
+    friend class dispatcher;
+    bool publishes(const string& event) const;
+    void on_trace(vsp_trace_protocol protocol, trace_handler fn);
+
 public:
-    module(const string& name, connection& conn, module* parent,
-           const string& kind, const string& version);
+    module(const string& name, connection& conn, dispatcher& disp,
+           module* parent, const string& kind, const string& version,
+           const vector<string>& events = {});
     virtual ~module();
     module() = delete;
     module(const module&) = delete;
@@ -38,6 +43,20 @@ public:
 
     const char* kind() const;
     const char* version() const;
+
+    bool is_traceable() const { return publishes("trace"); }
+    bool has_leds() const { return publishes("led"); }
+    bool has_uart() const { return publishes("uart"); }
+
+    // whether a trace handler is installed on this module
+    bool is_traced() const;
+
+    void on_led(led_handler fn);
+    void on_uart(uart_handler fn);
+    void on_trace(trace_handler fn);
+
+    template <typename T>
+    void on_trace(function<void(const trace_info&, const T&)> fn);
 
     friend ostream& operator<<(ostream& os, const module& mod);
 
@@ -55,6 +74,20 @@ public:
     const vector<attribute*>& attributes() const { return m_attrs; }
     const vector<command*>& commands() const { return m_cmds; }
 };
+
+template <typename T>
+void module::on_trace(function<void(const trace_info&, const T&)> fn) {
+    if (!fn) {
+        on_trace(T::PROTOCOL, nullptr);
+        return;
+    }
+
+    on_trace(T::PROTOCOL,
+             [fn](const trace_info& info, const trace_payload& tx) {
+                 if (const T* payload = std::get_if<T>(&tx))
+                     fn(info, *payload);
+             });
+}
 
 } // namespace vsp
 

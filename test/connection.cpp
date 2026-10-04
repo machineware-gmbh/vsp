@@ -10,6 +10,8 @@
 
 #include "testing.h"
 
+#include "vsp/connection.h"
+
 #include <future>
 #include <string_view>
 

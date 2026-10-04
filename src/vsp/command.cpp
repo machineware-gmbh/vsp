@@ -9,6 +9,7 @@
  ******************************************************************************/
 
 #include "vsp/command.h"
+#include "vsp/connection.h"
 
 #include "vsp/module.h"
 
