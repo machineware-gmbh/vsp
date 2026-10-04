@@ -12,6 +12,8 @@
 
 #include <atomic>
 #include <csignal>
+#include <cctype>
+#include <cstdlib>
 
 #include "vsp/version.h"
 
@@ -25,7 +27,9 @@ session::session(shared_ptr<vsp::session> s):
     m_event_skipped(0),
     m_event_file(),
     m_event_stream(false),
-    m_subscriptions() {
+    m_subscriptions(),
+    m_led_states(),
+    m_term_lines() {
     m_current_mod = m_session->find_module("");
 
     register_handler(&session::handle_cd, "cd",
@@ -56,6 +60,18 @@ session::session(shared_ptr<vsp::session> s):
                      "current module");
     register_handler(&session::handle_untrace, "untrace",
                      "stops tracing the given modules, or the current module");
+    register_handler(&session::handle_watch, "watch",
+                     "shows the leds of the given modules, or of the current "
+                     "module");
+    register_handler(&session::handle_unwatch, "unwatch",
+                     "stops watching the leds of the given modules, or of the "
+                     "current module");
+    register_handler(&session::handle_follow, "follow",
+                     "shows the terminal output of the given modules, or of "
+                     "the current module");
+    register_handler(&session::handle_unfollow, "unfollow",
+                     "stops following the terminals of the given modules, or "
+                     "of the current module");
 
     m_session->on_events_dropped([this](mwr::u64 n) {
         stringstream ss;
@@ -192,6 +208,7 @@ bool session::handle_run(const string& args) {
 
     m_event_stream = false;
     std::signal(SIGINT, prev);
+    flush_terminals();
     cout << flush_events() << "stopped by " << m_session->reason() << endl;
     return true;
 }
@@ -287,6 +304,235 @@ bool session::trace_select(const string& args, bool enable) {
     }
 
     return true;
+}
+
+bool session::handle_watch(const string& args) {
+    return device_select(args, "led", true);
+}
+
+bool session::handle_unwatch(const string& args) {
+    return device_select(args, "led", false);
+}
+
+bool session::handle_follow(const string& args) {
+    return device_select(args, "uart", true);
+}
+
+bool session::handle_unfollow(const string& args) {
+    return device_select(args, "uart", false);
+}
+
+static void find_publishers(vsp::module* mod, const string& event,
+                            vector<vsp::module*>& found) {
+    if (mwr::stl_contains(mod->events(), event))
+        found.push_back(mod);
+    for (vsp::module* child : mod->children())
+        find_publishers(child, event, found);
+}
+
+bool session::device_select(const string& args, const string& event,
+                            bool enable) {
+    bool leds = event == "led";
+    vector<string> names = mwr::split(args, ' ');
+    names.erase(std::remove(names.begin(), names.end(), ""), names.end());
+    if (names.empty())
+        names.push_back("");
+    std::replace(names.begin(), names.end(), string("."), string());
+
+    try {
+        for (const string& name : names) {
+            vsp::module* mod = m_current_mod->find_module(name);
+            if (!mod) {
+                cout << "module '" << name << "' does not exist!" << endl;
+                return true;
+            }
+
+            if (enable && leds && !mod->has_leds()) {
+                cout << "'" << mod->hierarchy_name() << "' has no leds"
+                     << (mod->has_uart() ? ", use 'follow' for terminals" : "")
+                     << endl;
+                return true;
+            }
+
+            if (enable && !leds && !mod->has_uart()) {
+                cout << "'" << mod->hierarchy_name() << "' has no terminals"
+                     << (mod->has_leds() ? ", use 'watch' for leds" : "")
+                     << endl;
+                return true;
+            }
+
+            vector<vsp::module*> devices;
+            find_publishers(mod, event, devices);
+            for (vsp::module* m : devices) {
+                if (leds)
+                    watch_leds(m, enable);
+                else
+                    follow_terminal(m, enable);
+            }
+        }
+    } catch (std::exception& ex) {
+        cout << ex.what() << endl;
+    }
+
+    return true;
+}
+
+void session::set_subscribed(const string& event, vsp::module* mod,
+                             bool enable) {
+    auto entry = std::make_pair(event, mod);
+    if (enable)
+        mwr::stl_add_unique(m_subscriptions, entry);
+    else
+        mwr::stl_remove(m_subscriptions, entry);
+}
+
+static vector<int> read_led_states(vsp::module* leds) {
+    vector<int> states;
+    vsp::command* status = leds->find_command("status");
+    if (!status)
+        return states;
+
+    string text;
+    try {
+        text = status->execute();
+    } catch (std::exception&) {
+        return states;
+    }
+
+    // parse all occurrences of "LED<n>: on|off"
+    for (size_t pos = text.find("LED"); pos != string::npos;
+         pos = text.find("LED", pos)) {
+        pos += 3;
+        size_t end = pos;
+        while (end < text.size() && isdigit((unsigned char)text[end]))
+            end++;
+        if (end == pos || text.compare(end, 2, ": ") != 0)
+            continue;
+
+        int state;
+        if (text.compare(end + 2, 2, "on") == 0)
+            state = 1;
+        else if (text.compare(end + 2, 3, "off") == 0)
+            state = 0;
+        else
+            continue;
+
+        size_t idx = std::stoul(text.substr(pos, end - pos));
+        if (states.size() <= idx)
+            states.resize(idx + 1, -1);
+        states[idx] = state;
+    }
+
+    return states;
+}
+
+void session::watch_leds(vsp::module* leds, bool enable) {
+    m_led_states.erase(leds);
+    if (enable)
+        m_led_states[leds] = read_led_states(leds);
+
+    vsp::led_handler fn = nullptr;
+    if (enable)
+        fn = [this](const vsp::led_event& ev) { show_led(ev); };
+    leds->on_led(fn);
+    set_subscribed("led", leds, enable);
+}
+
+static bool use_unicode() {
+#ifdef _WIN32
+    return false;
+#else
+    for (const char* name : { "LC_ALL", "LC_CTYPE", "LANG" }) {
+        const char* value = std::getenv(name);
+        if (value && *value) {
+            string s = mwr::to_lower(value);
+            return s.find("utf-8") != string::npos ||
+                   s.find("utf8") != string::npos;
+        }
+    }
+    return false;
+#endif
+}
+
+void session::show_led(const vsp::led_event& ev) {
+    vector<int>& states = m_led_states[&ev.leds];
+    if (states.size() <= ev.index)
+        states.resize(ev.index + 1, -1);
+    states[ev.index] = ev.state;
+
+    bool unicode = use_unicode();
+    string bar;
+    for (int s : states) {
+        if (s < 0)
+            bar += unicode ? "\xc2\xb7" : "?";
+        else if (s)
+            bar += unicode ? "\xe2\x97\x8f" : "*";
+        else
+            bar += unicode ? "\xe2\x97\x8b" : ".";
+    }
+
+    print_event(mwr::mkstr("%s %s %s  (%zu %s)",
+                           vsp::format_time(ev.time_ps).c_str(),
+                           ev.leds.hierarchy_name().c_str(), bar.c_str(),
+                           ev.index, ev.state ? "on" : "off"));
+}
+
+void session::follow_terminal(vsp::module* term, bool enable) {
+    flush_terminals();
+
+    vsp::uart_handler fn = nullptr;
+    if (enable)
+        fn = [this](const vsp::uart_event& ev) { show_terminal(ev); };
+    term->on_uart(fn);
+    set_subscribed("uart", term, enable);
+}
+
+void session::show_terminal(const vsp::uart_event& ev) {
+    vsp::module* term = &ev.terminal;
+    auto it = m_term_lines.find(term);
+    bool pending = it != m_term_lines.end();
+    term_line line = pending ? it->second : term_line{ ev.time_ps, "" };
+    if (pending)
+        m_term_lines.erase(it);
+
+    for (char c : ev.data) {
+        if (!pending) {
+            line = { ev.time_ps, "" };
+            pending = true;
+        }
+
+        if (c == '\n') {
+            print_terminal_line(term, line);
+            pending = false;
+        } else if (c != '\r') {
+            line.data += c;
+        }
+    }
+
+    if (pending)
+        m_term_lines[term] = line;
+}
+
+void session::print_terminal_line(vsp::module* term, const term_line& line) {
+    stringstream ss;
+    ss << vsp::format_time(line.time_ps) << " " << term->hierarchy_name()
+       << " | ";
+    for (char c : line.data) {
+        if (c == '\t' || (c >= 0x20 && c < 0x7f))
+            ss << c;
+        else
+            ss << mwr::mkstr("\\x%02x", (mwr::u8)c);
+    }
+    print_event(ss.str());
+}
+
+void session::flush_terminals() {
+    auto lines = std::move(m_term_lines);
+    m_term_lines.clear();
+    for (const auto& [term, line] : lines) {
+        if (!line.data.empty())
+            print_terminal_line(term, line);
+    }
 }
 
 bool session::events_status() {

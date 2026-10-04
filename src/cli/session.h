@@ -39,6 +39,14 @@ private:
     bool m_event_stream;
     vector<pair<string, vsp::module*>> m_subscriptions;
 
+    struct term_line {
+        mwr::u64 time_ps;
+        string data;
+    };
+
+    unordered_map<vsp::module*, vector<int>> m_led_states;
+    unordered_map<vsp::module*, term_line> m_term_lines;
+
     bool handle_list(const string& args);
     bool handle_info(const string& args);
     bool handle_cd(const string& args);
@@ -54,6 +62,19 @@ private:
     bool handle_trace(const string& args);
     bool handle_untrace(const string& args);
     bool trace_select(const string& args, bool enable);
+    bool handle_watch(const string& args);
+    bool handle_unwatch(const string& args);
+    bool handle_follow(const string& args);
+    bool handle_unfollow(const string& args);
+    bool device_select(const string& args, const string& event, bool enable);
+
+    void set_subscribed(const string& event, vsp::module* mod, bool enable);
+    void watch_leds(vsp::module* leds, bool enable);
+    void follow_terminal(vsp::module* term, bool enable);
+    void show_led(const vsp::led_event& ev);
+    void show_terminal(const vsp::uart_event& ev);
+    void print_terminal_line(vsp::module* term, const term_line& line);
+    void flush_terminals();
 
     bool events_status();
     bool events_select(const vector<string>& args, bool enable);

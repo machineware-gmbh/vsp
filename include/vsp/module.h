@@ -44,6 +44,9 @@ public:
     const char* kind() const;
     const char* version() const;
 
+    // events published by this module itself, e.g. "trace" for sockets
+    const vector<string>& events() const { return m_events; }
+
     bool is_traceable() const { return publishes("trace"); }
     bool has_leds() const { return publishes("led"); }
     bool has_uart() const { return publishes("uart"); }

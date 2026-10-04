@@ -64,6 +64,8 @@ protected:
 
 TEST_F(events_test, published_events) {
     EXPECT_TRUE(mod("system.cpu0.data")->is_traceable());
+    EXPECT_THAT(mod("system.cpu0.data")->events(), ElementsAre("trace"));
+    EXPECT_TRUE(mod("system.cpu0")->events().empty());
     EXPECT_TRUE(mod("system.cpu0")->is_traceable());
     EXPECT_TRUE(mod("")->is_traceable());
     EXPECT_FALSE(mod("system.cpu0")->has_leds());
