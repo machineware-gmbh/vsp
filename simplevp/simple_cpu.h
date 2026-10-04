@@ -91,7 +91,7 @@ private:
         stop_reason reason;
     };
 
-    std::array<u32, 32> m_reg_file = { 0 };
+    std::array<u32, 32> m_reg_file;
     u32 m_pc;
 
     u64 m_num_cycles;

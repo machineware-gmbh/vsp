@@ -34,7 +34,12 @@ simple_cpu::simple_cpu(const sc_core::sc_module_name& nm):
     i32_vector_property("i32_vector_property", { 0, 0, 0 }),
     string_vector_property("string_vector_property", { "", "", "" }),
     string_property("string_property", ""),
-    group("group", "processors") {
+    group("group", "processors"),
+    m_breakpoints(),
+    m_watchpoints(),
+    m_reg_file(),
+    m_pc(),
+    m_num_cycles() {
     set_little_endian();
 
     define_cpureg_r(0, reg_name(0), sizeof(reg_t));
@@ -130,7 +135,8 @@ bool simple_cpu::remove_watchpoint(const vcml::range& addr,
     return true;
 }
 
-bool simple_cpu::cmd_echo(const std::vector<std::string>& args, std::ostream& os) {
+bool simple_cpu::cmd_echo(const std::vector<std::string>& args,
+                          std::ostream& os) {
     os << "OK";
     for (const std::string& s : args)
         os << "," << s;
