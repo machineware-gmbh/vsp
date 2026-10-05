@@ -29,13 +29,17 @@ protected:
     static constexpr u64 TIMEOUT_MS = 120000;
 
     // without DMI, every bus access goes through the traced sockets
-    events_test():
-        sess(),
-        subp(),
-        port(connect_simple_vp(sess, subp,
-                               { "-c", "system.cpu0.data.allow_dmi=false",
-                                 "-c", "system.cpu1.data.allow_dmi=false" })) {
+    events_test(const vector<string>& extra = {}):
+        sess(), subp(), port(launch(sess, subp, extra)) {
         write_loop();
+    }
+
+    static u16 launch(vsp::session& sess, mwr::subprocess& subp,
+                      vector<string> extra) {
+        vector<string> args{ "-c", "system.cpu0.data.allow_dmi=false", "-c",
+                             "system.cpu1.data.allow_dmi=false" };
+        args.insert(args.end(), extra.begin(), extra.end());
+        return connect_simple_vp(sess, subp, args);
     }
 
     virtual ~events_test() {
@@ -216,6 +220,80 @@ TEST_F(events_test, print) {
     sess.step(STEP_NS, TIMEOUT_MS);
     ASSERT_FALSE(lines.empty());
     EXPECT_THAT(lines[0], HasSubstr("system.cpu0.data >> TLM READ @0x"));
+}
+
+class generator_test : public events_test
+{
+protected:
+    generator_test(): events_test({ "-c", "system.gen.enabled=true" }) {}
+};
+
+TEST_F(generator_test, published_events) {
+    EXPECT_TRUE(mod("system.leds")->has_leds());
+    EXPECT_FALSE(mod("system.leds")->has_uart());
+    EXPECT_TRUE(mod("system.term0")->has_uart());
+    EXPECT_FALSE(mod("system.term0")->has_leds());
+    EXPECT_FALSE(mod("system.gen")->has_leds());
+    EXPECT_FALSE(mod("system.gen")->has_uart());
+    EXPECT_TRUE(mod("system")->has_leds());
+    EXPECT_TRUE(mod("system")->has_uart());
+
+    EXPECT_THROW(mod("system.gen")->on_uart([](const uart_event& ev) {}),
+                 mwr::report);
+}
+
+TEST_F(generator_test, on_led) {
+    vsp::module* leds = mod("system.leds");
+    vector<led_event> events;
+    leds->on_led([&](const led_event& ev) { events.push_back(ev); });
+
+    sess.step(100000, TIMEOUT_MS);
+    ASSERT_GE(events.size(), 4);
+
+    // led <n % 4> toggles on tick <n>, all start off
+    bool states[4] = {};
+    u64 last_ps = 0;
+    for (size_t i = 0; i < events.size(); i++) {
+        const led_event& ev = events[i];
+        EXPECT_EQ(&ev.leds, leds);
+        EXPECT_EQ(ev.index, i % 4);
+        states[ev.index] = !states[ev.index];
+        EXPECT_EQ(ev.state, states[ev.index]);
+        EXPECT_GE(ev.time_ps, last_ps);
+        last_ps = ev.time_ps;
+    }
+
+    size_t count = 0;
+    leds->on_led(nullptr);
+    mod("system")->on_led([&](const led_event& ev) {
+        EXPECT_EQ(&ev.leds, leds);
+        count++;
+    });
+
+    size_t before = events.size();
+    sess.step(100000, TIMEOUT_MS);
+    EXPECT_GT(count, 0);
+    EXPECT_EQ(events.size(), before);
+    EXPECT_EQ(sess.events_dropped(), 0);
+}
+
+TEST_F(generator_test, on_uart) {
+    vsp::module* term = mod("system.term0");
+    string output;
+    term->on_uart([&](const uart_event& ev) {
+        EXPECT_EQ(&ev.terminal, term);
+        output += ev.data;
+    });
+
+    sess.step(100000, TIMEOUT_MS);
+    EXPECT_THAT(output, StartsWith("tick 0\ntick 1\n"));
+    EXPECT_THAT(output, HasSubstr("tick 7\n"));
+    EXPECT_EQ(sess.events_dropped(), 0);
+
+    term->on_uart(nullptr);
+    size_t len = output.size();
+    sess.step(100000, TIMEOUT_MS);
+    EXPECT_EQ(output.size(), len);
 }
 
 class fake_server

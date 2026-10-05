@@ -28,11 +28,15 @@ TEST(connection, constructor) {
 TEST(connection, connect) {
     connection conn;
 
+    mwr::server_socket server(1, 0);
+    u16 port = server.port();
+    server.unlisten(); // port is now free, nobody listens on it
+
     EXPECT_FALSE(conn.is_connected());
-    EXPECT_FALSE(try_connect(conn, "localhost", 12345));
+    EXPECT_FALSE(try_connect(conn, "localhost", port));
     EXPECT_FALSE(conn.is_connected());
 
-    mwr::server_socket server(1, 0);
+    server.listen(0);
     EXPECT_TRUE(server.is_listening());
 
     EXPECT_FALSE(server.is_connected());

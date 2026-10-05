@@ -18,6 +18,6 @@ if(NOT TARGET vcml)
     find_github_repo(vcml "machineware-gmbh/vcml")
 endif()
 
-add_executable(simplevp simple_vp.cpp simple_cpu.cpp)
+add_executable(simplevp simple_vp.cpp simple_cpu.cpp simple_gen.cpp)
 target_compile_options(simplevp PRIVATE ${MWR_COMPILER_WARN_FLAGS})
 target_link_libraries(simplevp PRIVATE vcml)

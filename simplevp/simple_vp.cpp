@@ -9,6 +9,7 @@
  ******************************************************************************/
 
 #include "simple_cpu.h"
+#include "simple_gen.h"
 #include "vcml.h"
 
 class simple_system : public vcml::system
@@ -26,6 +27,10 @@ public:
     vcml::generic::memory mem;
     vcml::generic::reset reset;
 
+    simple_gen gen;
+    vcml::serial::terminal term0;
+    vcml::gpio::leds leds;
+
     simple_system(const sc_core::sc_module_name& nm):
         vcml::system(nm),
         memrange("memrange", { 0, MEMSIZE - 1 }),
@@ -34,8 +39,15 @@ public:
         bus("bus"),
         clock("clock", 1 * vcml::GHz),
         mem("memory", MEMSIZE),
-        reset("reset") {
+        reset("reset"),
+        gen("gen"),
+        term0("term0"),
+        leds("leds") {
         bus.bind(mem.in, memrange);
+
+        term0.connect(gen);
+        for (size_t i = 0; i < simple_gen::NUM_LEDS; i++)
+            gen.led_out[i].bind(leds.gpio_in[i]);
 
         clock.clk.bind(bus.clk);
         clock.clk.bind(mem.clk);
