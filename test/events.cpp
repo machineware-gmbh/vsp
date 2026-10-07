@@ -208,9 +208,28 @@ TEST_F(events_test, reconnect) {
     EXPECT_GT(count, 0);
 }
 
+TEST_F(events_test, replay) {
+    vsp::module* cpu = mod("system.cpu0");
+    vector<pair<string, trace_clk>> clocks;
+
+    // new subscribers receive the current clock once, it never changes
+    cpu->on_trace<trace_clk>([&](const trace_info& info, const trace_clk& tx) {
+        clocks.emplace_back(info.port.hierarchy_name(), tx);
+    });
+
+    sess.step(STEP_NS, TIMEOUT_MS);
+    ASSERT_EQ(clocks.size(), 1);
+    EXPECT_EQ(clocks[0].first, "system.cpu0.clk");
+    EXPECT_EQ(clocks[0].second.period_ns, 1);
+    EXPECT_TRUE(clocks[0].second.posedge);
+    EXPECT_DOUBLE_EQ(clocks[0].second.duty_cycle, 0.5);
+}
+
 TEST_F(events_test, print) {
     vector<string> lines;
-    mod("system.cpu0")
+
+    // only the data socket, other sockets replay their state first
+    mod("system.cpu0.data")
         ->on_trace([&](const trace_info& info, const trace_payload& tx) {
             stringstream ss;
             ss << info << " " << tx;
