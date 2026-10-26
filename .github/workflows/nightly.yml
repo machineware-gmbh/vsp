@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, ubuntu-24.04-arm, ubuntu-22.04, ubuntu-22.04-arm, windows-2022, windows-2025]
+        os: [ubuntu-26.04, ubuntu-26.04-arm, ubuntu-24.04, ubuntu-24.04-arm, ubuntu-22.04, ubuntu-22.04-arm, windows-2022, windows-2025]
 
     steps:
       - name: Checkout
@@ -61,4 +61,3 @@ jobs:
               BUILD/Testing/Temporary/LastTest.log
           include-hidden-files: true
           retention-days: 7
-
