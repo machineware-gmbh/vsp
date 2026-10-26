@@ -83,7 +83,7 @@ private:
     string flush_events() const;
 
     template <typename T>
-    void print_report_line(const string& kind, T value);
+    void print_report_line(const string& kind, const T& value);
     bool print();
 
 protected:
@@ -100,7 +100,7 @@ public:
 };
 
 template <typename T>
-void session::print_report_line(const string& kind, T value) {
+void session::print_report_line(const string& kind, const T& value) {
     cout << termcolors::BOLD << termcolors::WHITE << std::left << std::setw(16)
          << kind << termcolors::CLEAR << std::left << termcolors::WHITE
          << value << termcolors::CLEAR << endl;
