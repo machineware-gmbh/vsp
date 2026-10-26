@@ -59,7 +59,7 @@ public:
     void on_trace(trace_handler fn);
 
     template <typename T>
-    void on_trace(function<void(const trace_info&, const T&)> fn);
+    void on_trace(const function<void(const trace_info&, const T&)>& fn);
 
     friend ostream& operator<<(ostream& os, const module& mod);
 
@@ -79,7 +79,7 @@ public:
 };
 
 template <typename T>
-void module::on_trace(function<void(const trace_info&, const T&)> fn) {
+void module::on_trace(const function<void(const trace_info&, const T&)>& fn) {
     if (!fn) {
         on_trace(T::PROTOCOL, nullptr);
         return;
