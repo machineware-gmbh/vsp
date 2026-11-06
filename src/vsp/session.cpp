@@ -52,6 +52,7 @@ static const unordered_map<std::string_view, vsp_stop_reason> VSP_STOP_REASONS{
     { "step", VSP_STOP_REASON_STEP_COMPLETE },
     { "rwatchpoint", VSP_STOP_REASON_RWATCHPOINT },
     { "wwatchpoint", VSP_STOP_REASON_WWATCHPOINT },
+    { "finished", VSP_STOP_REASON_FINISHED },
     { "<unknown>", VSP_STOP_REASON_UNKNOWN },
 };
 
@@ -158,6 +159,7 @@ void session::update_reason(const string& reason) {
 
     switch (newreason.reason) {
     case VSP_STOP_REASON_STEP_COMPLETE:
+    case VSP_STOP_REASON_FINISHED:
     case VSP_STOP_REASON_USER: {
         // nothing to do
         break;

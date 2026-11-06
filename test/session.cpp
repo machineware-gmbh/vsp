@@ -364,3 +364,26 @@ TEST(local_sessions, orphans) {
     EXPECT_FALSE(listed());
     EXPECT_FALSE(mwr::file_exists(path));
 }
+
+TEST(session, finished) {
+    // the simulation ends by itself, but stays around while we are connected
+    vsp::session sess;
+    mwr::subprocess subp;
+    connect_simple_vp(sess, subp, { "-c", "system.duration=1ms" });
+
+    sess.run();
+    while (sess.check_running())
+        mwr::usleep(100);
+
+    EXPECT_TRUE(sess.is_connected());
+    EXPECT_EQ(sess.reason().reason, VSP_STOP_REASON_FINISHED);
+    EXPECT_EQ(stop_reason_str(sess.reason()), "finished");
+    EXPECT_NE(sess.find_module("system.cpu0"), nullptr);
+
+    EXPECT_THROW(sess.run(), mwr::report);
+    EXPECT_THROW(sess.step(0), mwr::report);
+
+    sess.quit();
+    EXPECT_FALSE(sess.is_connected());
+    subp.terminate();
+}
