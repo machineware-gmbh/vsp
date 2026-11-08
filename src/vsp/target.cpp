@@ -11,6 +11,8 @@
 #include "vsp/target.h"
 #include "vsp/connection.h"
 
+#include <regex>
+
 namespace vsp {
 
 static string wp_type_str(watchpoint_type type) {
@@ -168,6 +170,199 @@ vector<u8> target::read_vmem(u64 vaddr, size_t size) {
     for (size_t i = 1; i < resp.size(); ++i)
         ret.emplace_back((u8)stoul(resp[i], nullptr, 16));
     return ret;
+}
+
+vector<u8> target::read_vmem_ex(u64 vaddr, size_t size,
+                                vector<vmem_status>& status) {
+    auto resp = m_conn.command(
+        { "vread", m_name, to_string(vaddr), to_string(size), "status" });
+    if (resp.size() != size + 1)
+        MWR_REPORT("%s: malformed response", __func__);
+
+    vector<u8> ret(size, 0);
+    status.assign(size, VMEM_OK);
+    for (size_t i = 0; i < size; ++i) {
+        const string& tok = resp[i + 1];
+        if (tok == "--")
+            status[i] = VMEM_MMU_FAULT;
+        else if (tok == "**")
+            status[i] = VMEM_BUS_ERROR;
+        else
+            ret[i] = (u8)stoul(tok, nullptr, 16);
+    }
+
+    return ret;
+}
+
+static bool parse_lsym_line(const string& line, symbol& sym) {
+    size_t a = line.find(' ');
+    size_t b = a == string::npos ? a : line.find(' ', a + 1);
+    if (a != 1 || b == string::npos || (line[0] != 'F' && line[0] != 'O'))
+        return false;
+
+    sym.is_code = line[0] == 'F';
+    sym.addr = stoull(line.substr(a + 1, b - a - 1), nullptr, 16);
+    sym.size = 0;
+    sym.name = line.substr(b + 1);
+    return !sym.name.empty();
+}
+
+static bool is_unknown(const vector<string>& resp) {
+    return resp.size() == 1 && resp[0].empty();
+}
+
+static void check_records(const vector<string>& resp, size_t n,
+                          const char* func) {
+    if (resp.empty() || resp[0] != "OK")
+        MWR_REPORT("%s", resp.size() > 1 ? resp[1].c_str() : "unknown error");
+    if ((resp.size() - 1) % n != 0)
+        MWR_REPORT("%s: malformed response", func);
+}
+
+static vector<string> exec_lines(connection& conn, const vector<string>& cmd) {
+    auto resp = conn.command(cmd);
+    return resp.size() < 2 ? vector<string>() : split(resp[1], '\n');
+}
+
+static u64 parse_hex(const string& s) {
+    return s.empty() ? 0 : stoull(s, nullptr, 16);
+}
+
+vector<symbol> target::symbols() {
+    vector<symbol> syms;
+    auto resp = m_conn.request({ "lsym", m_name });
+
+    if (is_unknown(resp)) {
+        symbol sym;
+        for (const string& line :
+             exec_lines(m_conn, { "exec", m_name, "lsym" }))
+            if (parse_lsym_line(line, sym))
+                syms.push_back(sym);
+        return syms;
+    }
+
+    check_records(resp, 4, __func__);
+    syms.reserve((resp.size() - 1) / 4);
+    for (size_t i = 1; i + 3 < resp.size(); i += 4) {
+        symbol sym;
+        sym.is_code = resp[i] == "F";
+        sym.addr = stoull(resp[i + 1], nullptr, 16);
+        sym.size = stoull(resp[i + 2], nullptr, 10);
+        sym.name = resp[i + 3];
+        syms.push_back(std::move(sym));
+    }
+
+    return syms;
+}
+
+static const std::regex DISAS_LINE(
+    R"(^\s*>?\s*(?:\[(.+?)\+0x([0-9a-fA-F]+)\]\s+)?([0-9a-fA-F]+))"
+    R"((?:\s*([0-9a-fA-F]+|\?+))?: \[([0-9a-fA-F ]*)\]\s*(.*)$)");
+
+vector<instruction> target::disassemble(u64 vaddr, size_t count) {
+    vector<instruction> insns;
+    auto resp = m_conn.request(
+        { "disas", m_name, to_string(vaddr), to_string(count) });
+
+    if (is_unknown(resp)) {
+        string end = to_string(vaddr + count * 16);
+        auto lines = exec_lines(
+            m_conn, { "exec", m_name, "disas", to_string(vaddr), end });
+        std::smatch m;
+        for (const string& line : lines) {
+            if (insns.size() >= count ||
+                !std::regex_match(line, m, DISAS_LINE))
+                continue;
+
+            instruction insn;
+            insn.symbol = m[1];
+            insn.offset = parse_hex(m[2]);
+            insn.virt = parse_hex(m[3]);
+            if (m[4].length() == 0)
+                insn.phys = insn.virt;
+            else if (m.str(4)[0] != '?')
+                insn.phys = parse_hex(m[4]);
+            for (const string& b : split(m[5], ' '))
+                if (!b.empty())
+                    insn.bytes.push_back((u8)parse_hex(b));
+            insn.code = m[6];
+            insns.push_back(std::move(insn));
+        }
+
+        return insns;
+    }
+
+    check_records(resp, 6, __func__);
+    insns.reserve((resp.size() - 1) / 6);
+    for (size_t i = 1; i + 5 < resp.size(); i += 6) {
+        instruction insn;
+        insn.virt = parse_hex(resp[i]);
+        if (!resp[i + 1].empty())
+            insn.phys = parse_hex(resp[i + 1]);
+        for (size_t j = 0; j + 1 < resp[i + 2].size(); j += 2)
+            insn.bytes.push_back((u8)parse_hex(resp[i + 2].substr(j, 2)));
+        insn.symbol = resp[i + 3];
+        insn.offset = parse_hex(resp[i + 4]);
+        insn.code = resp[i + 5];
+        insns.push_back(std::move(insn));
+    }
+
+    return insns;
+}
+
+static const std::regex STACK_LINE(
+    R"(^\[0x([0-9a-fA-F]+)\](?: (.+) \+0x([0-9a-fA-F]+)(?:/0x[0-9a-fA-F]+)?)?\s*$)");
+
+vector<stackframe> target::stacktrace(size_t limit) {
+    vector<stackframe> frames;
+    auto resp = m_conn.request({ "stack", m_name, to_string(limit) });
+
+    if (is_unknown(resp)) {
+        std::smatch m;
+        for (const string& line :
+             exec_lines(m_conn, { "exec", m_name, "stack" })) {
+            if (frames.size() >= limit ||
+                !std::regex_match(line, m, STACK_LINE))
+                continue;
+            frames.push_back({ parse_hex(m[1]), 0, m[2], parse_hex(m[3]) });
+        }
+
+        return frames;
+    }
+
+    check_records(resp, 4, __func__);
+    frames.reserve((resp.size() - 1) / 4);
+    for (size_t i = 1; i + 3 < resp.size(); i += 4) {
+        frames.push_back({ parse_hex(resp[i]), parse_hex(resp[i + 1]),
+                           resp[i + 2], parse_hex(resp[i + 3]) });
+    }
+
+    return frames;
+}
+
+target_info target::info() {
+    target_info info{};
+    auto resp = m_conn.command({ "tinfo", m_name });
+    for (size_t i = 1; i < resp.size(); i++) {
+        size_t sep = resp[i].find(':');
+        if (sep == string::npos)
+            continue;
+
+        string key = resp[i].substr(0, sep);
+        u64 val = parse_hex(resp[i].substr(sep + 1));
+        if (key == "id")
+            info.id = val;
+        else if (key == "pc")
+            info.pc = val;
+        else if (key == "lr")
+            info.lr = val;
+        else if (key == "sp")
+            info.sp = val;
+        else if (key == "fp")
+            info.fp = val;
+    }
+
+    return info;
 }
 
 size_t target::write_vmem(u64 vaddr, const vector<u8>& data) {

@@ -34,6 +34,43 @@ struct watchpoint {
     watchpoint_type type;
 };
 
+enum vmem_status {
+    VMEM_OK = 0,
+    VMEM_MMU_FAULT = 1,
+    VMEM_BUS_ERROR = 2,
+};
+
+struct symbol {
+    string name;
+    bool is_code;
+    u64 addr;
+    u64 size;
+};
+
+struct instruction {
+    u64 virt;
+    optional<u64> phys;
+    vector<u8> bytes;
+    string symbol;
+    u64 offset;
+    string code;
+};
+
+struct stackframe {
+    u64 pc;
+    u64 fp;
+    string symbol;
+    u64 offset;
+};
+
+struct target_info {
+    u64 id;
+    u64 pc;
+    u64 lr;
+    u64 sp;
+    u64 fp;
+};
+
 class target;
 
 struct target_group {
@@ -83,6 +120,17 @@ public:
 
     vector<u8> read_vmem(u64 vaddr, size_t size);
     size_t write_vmem(u64 vaddr, const vector<u8>& data);
+
+    vector<u8> read_vmem_ex(u64 vaddr, size_t size,
+                            vector<vmem_status>& status);
+
+    vector<symbol> symbols();
+
+    vector<instruction> disassemble(u64 vaddr, size_t count);
+
+    vector<stackframe> stacktrace(size_t limit = 64);
+
+    target_info info();
 
     vector<u8> read_pmem(u64 paddr, size_t size);
     size_t write_pmem(u64 paddr, const vector<u8>& data);

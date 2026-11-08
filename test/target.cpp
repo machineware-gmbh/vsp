@@ -408,6 +408,41 @@ TEST_F(target_test, memory_read) {
     EXPECT_THAT(targ->read_vmem(ADDR_OO_BOUND, 4), ElementsAre(0, 0, 0, 0));
 }
 
+TEST_F(target_test, memory_read_ex) {
+    target* targ = sess.find_target("system.cpu0");
+    ASSERT_NE(targ, nullptr);
+    EXPECT_NE(targ->write_vmem(ADDR_IN_BOUND, data1234), 0);
+
+    vector<vmem_status> status;
+    EXPECT_THAT(targ->read_vmem_ex(ADDR_IN_BOUND, 4, status),
+                ElementsAre(1, 2, 3, 4));
+    EXPECT_THAT(status, Each(VMEM_OK));
+
+    // nothing on the bus out of bounds
+    EXPECT_THAT(targ->read_vmem_ex(ADDR_OO_BOUND, 4, status),
+                ElementsAre(0, 0, 0, 0));
+    EXPECT_THAT(status, Each(VMEM_BUS_ERROR));
+}
+
+TEST_F(target_test, symbols) {
+    target* targ = sess.find_target("system.cpu0");
+    ASSERT_NE(targ, nullptr);
+    EXPECT_TRUE(targ->symbols().empty());
+
+    // the simulator's own ELF file makes for plenty of symbols
+    command* loadsyms = sess.find_command("system.cpu0.loadsyms");
+    ASSERT_NE(loadsyms, nullptr);
+    loadsyms->execute({ SIMPLE_VP_PATH });
+
+    auto syms = targ->symbols();
+    auto it = std::find_if(syms.begin(), syms.end(),
+                           [](const symbol& s) { return s.name == "main"; });
+    ASSERT_NE(it, syms.end());
+    EXPECT_TRUE(it->is_code);
+    EXPECT_NE(it->addr, 0);
+    EXPECT_NE(it->size, 0);
+}
+
 TEST_F(target_test, memory_read_while_running) {
     target* targ = sess.find_target("system.cpu0");
     ASSERT_NE(targ, nullptr);
@@ -569,6 +604,38 @@ TEST_F(target_test, program_counter) {
     mwr::usleep(1000);
     EXPECT_THROW(targ->get_pc(), mwr::report);
     sess.stop();
+}
+
+TEST_F(target_test, disassemble) {
+    target* targ = sess.find_target("system.cpu0");
+    ASSERT_NE(targ, nullptr);
+    EXPECT_NE(targ->write_vmem(0x0, inf_loop_inst), 0);
+    EXPECT_NE(targ->write_vmem(0x4, data1234), 0);
+
+    auto insns = targ->disassemble(0x0, 2);
+    ASSERT_EQ(insns.size(), 2);
+    EXPECT_EQ(insns[0].virt, 0x0);
+    EXPECT_EQ(insns[0].phys, 0x0);
+    EXPECT_THAT(insns[0].bytes, ElementsAre(0x00, 0x00, 0x00, 0x20));
+    EXPECT_EQ(insns[0].code, ".word 0x20000000");
+    EXPECT_EQ(insns[0].symbol, "");
+    EXPECT_EQ(insns[1].virt, 0x4);
+    EXPECT_EQ(insns[1].code, ".word 0x04030201");
+
+    // nothing on the bus out of bounds
+    EXPECT_THROW(targ->disassemble(ADDR_OO_BOUND, 1), mwr::report);
+}
+
+TEST_F(target_test, stacktrace_and_info) {
+    target* targ = sess.find_target("system.cpu0");
+    ASSERT_NE(targ, nullptr);
+
+    auto frames = targ->stacktrace();
+    ASSERT_GE(frames.size(), 1);
+    EXPECT_EQ(frames[0].pc, targ->get_pc());
+
+    target_info info = targ->info();
+    EXPECT_EQ(info.pc, targ->get_pc());
 }
 
 TEST_F(target_test, stepping) {

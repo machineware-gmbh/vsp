@@ -148,6 +148,15 @@ bool simple_cpu::virt_to_phys(u64 vaddr, u64& paddr) {
     return true;
 }
 
+// every instruction is just a word here
+bool simple_cpu::disassemble(u8* ibuf, u64& addr, string& code) {
+    inst_t inst;
+    memcpy(&inst, ibuf, sizeof(inst));
+    code = mwr::mkstr(".word 0x%08x", inst);
+    addr += sizeof(inst);
+    return true;
+}
+
 bool simple_cpu::read_reg_dbg(size_t regno, void* buf, size_t len) {
     log_debug("debug read of register %lu", regno);
     if (regno < m_reg_file.size())

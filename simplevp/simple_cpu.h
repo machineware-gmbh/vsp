@@ -74,6 +74,8 @@ public:
 
     virtual bool virt_to_phys(u64 vaddr, u64& paddr) override;
 
+    virtual bool disassemble(u8* ibuf, u64& addr, string& code) override;
+
     bool cmd_echo(const std::vector<std::string>& args, std::ostream& os);
 
 private:
