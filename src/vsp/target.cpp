@@ -11,8 +11,6 @@
 #include "vsp/target.h"
 #include "vsp/connection.h"
 
-#include <regex>
-
 namespace vsp {
 
 static string wp_type_str(watchpoint_type type) {
@@ -194,34 +192,15 @@ vector<u8> target::read_vmem_ex(u64 vaddr, size_t size,
     return ret;
 }
 
-static bool parse_lsym_line(const string& line, symbol& sym) {
-    size_t a = line.find(' ');
-    size_t b = a == string::npos ? a : line.find(' ', a + 1);
-    if (a != 1 || b == string::npos || (line[0] != 'F' && line[0] != 'O'))
-        return false;
-
-    sym.is_code = line[0] == 'F';
-    sym.addr = stoull(line.substr(a + 1, b - a - 1), nullptr, 16);
-    sym.size = 0;
-    sym.name = line.substr(b + 1);
-    return !sym.name.empty();
-}
-
-static bool is_unknown(const vector<string>& resp) {
-    return resp.size() == 1 && resp[0].empty();
-}
-
-static void check_records(const vector<string>& resp, size_t n,
+static bool check_request(const vector<string>& resp, size_t n,
                           const char* func) {
+    if (resp.size() == 1 && resp[0].empty())
+        return false;
     if (resp.empty() || resp[0] != "OK")
         MWR_REPORT("%s", resp.size() > 1 ? resp[1].c_str() : "unknown error");
     if ((resp.size() - 1) % n != 0)
         MWR_REPORT("%s: malformed response", func);
-}
-
-static vector<string> exec_lines(connection& conn, const vector<string>& cmd) {
-    auto resp = conn.command(cmd);
-    return resp.size() < 2 ? vector<string>() : split(resp[1], '\n');
+    return true;
 }
 
 static u64 parse_hex(const string& s) {
@@ -232,16 +211,9 @@ vector<symbol> target::symbols() {
     vector<symbol> syms;
     auto resp = m_conn.request({ "lsym", m_name });
 
-    if (is_unknown(resp)) {
-        symbol sym;
-        for (const string& line :
-             exec_lines(m_conn, { "exec", m_name, "lsym" }))
-            if (parse_lsym_line(line, sym))
-                syms.push_back(sym);
+    if (!check_request(resp, 4, __func__))
         return syms;
-    }
 
-    check_records(resp, 4, __func__);
     syms.reserve((resp.size() - 1) / 4);
     for (size_t i = 1; i + 3 < resp.size(); i += 4) {
         symbol sym;
@@ -255,44 +227,14 @@ vector<symbol> target::symbols() {
     return syms;
 }
 
-static const std::regex DISAS_LINE(
-    R"(^\s*>?\s*(?:\[(.+?)\+0x([0-9a-fA-F]+)\]\s+)?([0-9a-fA-F]+))"
-    R"((?:\s*([0-9a-fA-F]+|\?+))?: \[([0-9a-fA-F ]*)\]\s*(.*)$)");
-
 vector<instruction> target::disassemble(u64 vaddr, size_t count) {
     vector<instruction> insns;
     auto resp = m_conn.request(
         { "disas", m_name, to_string(vaddr), to_string(count) });
 
-    if (is_unknown(resp)) {
-        string end = to_string(vaddr + count * 16);
-        auto lines = exec_lines(
-            m_conn, { "exec", m_name, "disas", to_string(vaddr), end });
-        std::smatch m;
-        for (const string& line : lines) {
-            if (insns.size() >= count ||
-                !std::regex_match(line, m, DISAS_LINE))
-                continue;
-
-            instruction insn;
-            insn.symbol = m[1];
-            insn.offset = parse_hex(m[2]);
-            insn.virt = parse_hex(m[3]);
-            if (m[4].length() == 0)
-                insn.phys = insn.virt;
-            else if (m.str(4)[0] != '?')
-                insn.phys = parse_hex(m[4]);
-            for (const string& b : split(m[5], ' '))
-                if (!b.empty())
-                    insn.bytes.push_back((u8)parse_hex(b));
-            insn.code = m[6];
-            insns.push_back(std::move(insn));
-        }
-
+    if (!check_request(resp, 6, __func__))
         return insns;
-    }
 
-    check_records(resp, 6, __func__);
     insns.reserve((resp.size() - 1) / 6);
     for (size_t i = 1; i + 5 < resp.size(); i += 6) {
         instruction insn;
@@ -310,27 +252,13 @@ vector<instruction> target::disassemble(u64 vaddr, size_t count) {
     return insns;
 }
 
-static const std::regex STACK_LINE(
-    R"(^\[0x([0-9a-fA-F]+)\](?: (.+) \+0x([0-9a-fA-F]+)(?:/0x[0-9a-fA-F]+)?)?\s*$)");
-
 vector<stackframe> target::stacktrace(size_t limit) {
     vector<stackframe> frames;
     auto resp = m_conn.request({ "stack", m_name, to_string(limit) });
 
-    if (is_unknown(resp)) {
-        std::smatch m;
-        for (const string& line :
-             exec_lines(m_conn, { "exec", m_name, "stack" })) {
-            if (frames.size() >= limit ||
-                !std::regex_match(line, m, STACK_LINE))
-                continue;
-            frames.push_back({ parse_hex(m[1]), 0, m[2], parse_hex(m[3]) });
-        }
-
+    if (!check_request(resp, 4, __func__))
         return frames;
-    }
 
-    check_records(resp, 4, __func__);
     frames.reserve((resp.size() - 1) / 4);
     for (size_t i = 1; i + 3 < resp.size(); i += 4) {
         frames.push_back({ parse_hex(resp[i]), parse_hex(resp[i + 1]),

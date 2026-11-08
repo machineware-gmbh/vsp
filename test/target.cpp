@@ -429,6 +429,10 @@ TEST_F(target_test, symbols) {
     ASSERT_NE(targ, nullptr);
     EXPECT_TRUE(targ->symbols().empty());
 
+#ifdef _WIN32
+    GTEST_SKIP() << "simplevp is no ELF file on Windows";
+#endif
+
     // the simulator's own ELF file makes for plenty of symbols
     command* loadsyms = sess.find_command("system.cpu0.loadsyms");
     ASSERT_NE(loadsyms, nullptr);
